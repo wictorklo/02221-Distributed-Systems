@@ -1,3 +1,10 @@
+class Action:
+    def __init__(self, speed = 0, direction = 0):
+        self.speed = speed
+        self.direction = direction
+
+
+
 class Drone:
     def __init__(self,networkInterface):
         self.networkInterface = networkInterface
@@ -23,3 +30,13 @@ class Drone:
     #update current state based on information in message
     def __updateStateMessage(self,message):
         pass
+
+class ADrone(Drone):
+    def __init__(self, networkInterface):
+        super().__init__(networkInterface)
+        self.type = "A"
+
+class BDrone(Drone):
+    def __init__(self, networkInterface):
+        super().__init__(networkInterface)
+        self.type = "B"
