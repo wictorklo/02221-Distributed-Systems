@@ -14,7 +14,7 @@ class Drone:
     #method used by simulator
     #get drones current desired physical action
     def getAction(self):
-        pass
+        return Action()
 
     #give drone computing power
     #this can update action returned by getAction(), put and get messages in and from the network interface 

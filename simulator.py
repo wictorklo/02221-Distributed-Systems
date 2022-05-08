@@ -2,6 +2,7 @@ from math import floor
 import numpy as np
 import random as rnd
 from drones import *
+from script import *
 from util import *
 
 tiletype = np.dtype("u1")
@@ -51,9 +52,9 @@ def printMap(tilemap,adrones,bdrones):
 
 class Simulator:
     def __init__(self,
-            initialState,script,
-            ADrones,BDrones,
-            spreadChance = 0.3,ASpeed = 3,BSpeed = 3):
+            initialState, script : 'Script',
+            ADrones : 'list[ADrone]', BDrones : 'list[BDrone]',
+            spreadChance = 0.3, ASpeed = 3, BSpeed = 3):
         self.map = initialState 
         self.ADrones = ADrones
         self.BDrones = BDrones
@@ -71,7 +72,8 @@ class Simulator:
         self.__exstinguishFire()
         self.__spreadFire()
         self.__moveDrones()
-        self.__sendMessages()
+        self.__droneObservations()
+        self.__thinkAndSendMessages()
         self.turns += 1
 
     def __performScriptedAction(self):
@@ -114,6 +116,8 @@ class Simulator:
             drone.xpos = x
             drone.ypos = y
             
+    def __droneObservations(self):
+        pass
 
-    def __sendMessages(self):
+    def __thinkAndSendMessages(self):
         pass

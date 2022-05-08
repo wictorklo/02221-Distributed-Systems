@@ -2,7 +2,7 @@ from abc import abstractclassmethod
 from typing import Optional
 Protocol = {}
 
-
+#We're not assuming IP right? 
 class Message:
     data = {}
     def __init__(self, sender, receiver) -> None: 

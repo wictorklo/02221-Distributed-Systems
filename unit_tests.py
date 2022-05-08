@@ -1,6 +1,7 @@
 #general test of software componenents
+import json
 import unittest as ut
-from network_interfaces import NWInterface
+from network_interfaces import NetworkInterface
 from simulator import *
 from script import *
 from util import *
@@ -31,7 +32,7 @@ class TestSimulator(ut.TestCase):
         sim.performTurn()
     
     def test_move_corner_to_corner(self):
-        ni1 = NWInterface()
+        ni1 = NetworkInterface(0)
         drone1 = ADrone(ni1,xpos = 0,ypos = 0)
         drone1.getAction = lambda : Action(1,math.pi / 4)
 
@@ -60,4 +61,41 @@ class TestSimulator(ut.TestCase):
             (not isFlammable(sim.map[9][9])) or  #the tile is either burnt out
             isOnFire(sim.map[9][9]))           #or on fire
 
+    def test_exstinguish_fire(self):
+        script = EmptyScript()
+        tmap = emptyMap(10,10,flammable=True)
+        setFire(tmap,0,0)
+        ni1 = NetworkInterface(0)
+        drone1 = ADrone(ni1,xpos = 1,ypos = 1)
+        sim = Simulator(tmap,script,[drone1],[])
 
+        for i in range(3):
+            sim.performTurn()
+
+        self.assertFalse(isOnFire(sim.map[0][0]))
+        self.assertFalse(isOnFire(sim.map[0][1]))
+        self.assertFalse(isOnFire(sim.map[1][0]))
+        self.assertFalse(isOnFire(sim.map[1][1]))
+
+class TestNetworkInterface(ut.TestCase):
+    def test_recieve_message(self):
+        ni1 = NetworkInterface(1)
+        ni1.receiveMessage(json.dumps({
+            "destination" : 1,
+            "source" : 0,
+            "ttl" : 1,
+            "payload" : "hello"
+            }))
+        self.assertEqual(ni1.getIncoming(),"hello")
+
+    def test_bounce_message(self):
+        ni1 = NetworkInterface(1)
+        message = {
+            "destination" : 2,
+            "source" : 0,
+            "ttl" : 1,
+            "payload" : "hello"
+            }
+        ni1.receiveMessage(json.dumps(message))
+        message["ttl"] -= 1
+        self.assertEqual(json.loads(ni1.getOutgoing()),message)

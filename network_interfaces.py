@@ -1,29 +1,56 @@
-class NWInterface:
-    def __init__(self):
-        self.outGoing = []
-        self.inComing = []
+from collections import deque
+import json
+
+class Message:
+    def __init__(self) -> None:
+        self.data = None
+
+    def __init__(self,transmit):
+        self.loadTransmit(transmit)
+
+    def loadTransmit(self,transmit):
+        self.data = json.loads(transmit)
+        self.source = self.data["source"]
+        self.destination = self.data["destination"]
+        self.payload = self.data["payload"]
+
+    def getTransmit(self):
+        return json.dumps(self.data)
+
+class NetworkInterface:
+    def __init__(self,ID):
+        self.ID = ID
+        self.outGoing = deque()
+        self.inComing = deque()
 
     #method used by associated drone
     #sends a message to one or other drones
     #destination might be identity of one other drone, gps area, nearest type A drone, etc etc
-    def sendMessage(self,destination,payload):
-        self.outGoing.append(self.__constructMessage(destination,payload))
+    def sendMessage(self,message : 'Message'):
+        self.outGoing.append(message.getTransmit())
 
     #method used by associated drone
     #returns a message meant for the drone:
-    def getPayload(self):
-        pass
+    def getIncoming(self):
+        if self.inComing:
+            return self.inComing.popleft()
+        else:
+            return None
 
     #method used by simulator 
     #gives interface message from network
-    def receiveMessage(self,message):
-        self.inComing.append(message)
+    def receiveMessage(self,transmit):
+        message = Message(transmit)
+        if message.destination == self.ID:
+            self.inComing.append(message.payload)
+        elif message.data["ttl"] > 0: #bounce on if meant to someone else and not expired
+            message.data["ttl"] -= 1
+            self.sendMessage(message)
 
     #message used by simulator
     #gets message interface wants broadcasted
-    def getMessage(self):
-        self.outGoing.pop(0)
-
-    #construct new message 
-    def __constructMessage(self,destination,payload):
-        pass
+    def getOutgoing(self):
+        if self.outGoing:
+            return self.outGoing.popleft()
+        else:
+            return None
