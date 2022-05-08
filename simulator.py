@@ -9,8 +9,12 @@ tiletype = np.dtype("u1")
 #State is a tile-grid of 1byte numbers. 
 #First index is horizontal position and second vertical
 #[0][0] is bottom left corner
-def emptyMap(xsize,ysize):
-    return np.zeros((xsize,ysize),dtype=tiletype)
+def emptyMap(xsize,ysize,flammable = False):
+    if flammable:
+        return np.full((xsize,ysize),1,dtype=tiletype)
+    else:
+        return np.zeros((xsize,ysize),dtype=tiletype)
+
 
 
 #meaning of bits in byte-map:
@@ -24,6 +28,16 @@ def isFlammable(tile):
     return (tile & 1)
 def isOnFire(tile):
     return (tile & 2) >> 1
+
+def setFlammable(tmap,x,y):
+    tmap[x][y] |= 1
+def setFire(tmap,x,y):
+    tmap[x][y] |= 2
+
+def unsetFlammable(tmap,x,y):
+    tmap[x][y] &= ~1
+def unsetFire(tmap,x,y):
+    tmap[x][y] &= ~2
 
 #TODO: make better printer
 def printMap(tilemap,adrones,bdrones): 
@@ -65,27 +79,29 @@ class Simulator:
 
     def __exstinguishFire(self):
         for drone in self.ADrones: 
-            for xd, yd in np.ndindex((2,2)):
+            for xd, yd in np.ndindex((3,3)):
                 x = drone.xpos + xd - 1
                 y = drone.ypos + yd - 1
                 if (x >= 0 and x < self.map.shape[0] and
                         y >= 0 and y < self.map.shape[1]):
                     x = floor(x)
                     y = floor(y)
-                    self.map[x][y] &= ~2
+                    unsetFire(self.map,x,y)
 
     def __spreadFire(self):
+        spreadmap = np.zeros(self.map.shape,dtype=tiletype)
         for x, y in np.ndindex(self.map.shape): 
             if isOnFire(self.map[x,y]): #if tile is on fire
                 #TODO: add chance of fire burning out
-                for xd, yd in np.ndindex((2,2)): #for all neighbours
+                for xd, yd in np.ndindex((3,3)): #for all neighbours
                     x1 = x + xd - 1 #subtract 1 to consider range [-1,0,1]
                     y1 = y + yd - 1
                     if (x1 >= 0 and x1 < self.map.shape[0] and #if neighbour is on map
                             y1 >= 0 and y1 < self.map.shape[1] and 
                             isFlammable(self.map[x1][y1]) and #and neighbour is flammable
                             rnd.random() <= self.spreadChance): #and the fire spreads according to dice
-                        self.map[x1][y1] |= 2 #then put neighbour on fire
+                        setFire(spreadmap,x1,y1) #then put neighbour on fire
+        self.map = np.bitwise_or(self.map,spreadmap)
                 
 
     def __moveDrones(self):
@@ -93,8 +109,8 @@ class Simulator:
             maxSpeed = (self.ASpeed if drone.type == "A" else self.BSpeed)
             action = drone.getAction()
             x, y = movePosition(drone.xpos,drone.ypos,action.speed * maxSpeed,action.direction)
-            x = min(max(0,x),self.map.shape[0])
-            y = min(max(0,y),self.map.shape[1])
+            x = min(max(0,x),self.map.shape[0] - 0.00001)
+            y = min(max(0,y),self.map.shape[1] - 0.00001)
             drone.xpos = x
             drone.ypos = y
             
