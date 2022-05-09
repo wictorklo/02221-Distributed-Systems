@@ -77,6 +77,30 @@ class TestSimulator(ut.TestCase):
         self.assertFalse(isOnFire(sim.map[1][0]))
         self.assertFalse(isOnFire(sim.map[1][1]))
 
+    def test_transmit_message(self):
+        script = EmptyScript()
+        tmap = emptyMap(10,10,flammable=True)
+        ni1 = NetworkInterface(1)
+        ni2 = NetworkInterface(2)
+        drone1 = ADrone(ni1,xpos = 1,ypos = 1)
+        drone2 = ADrone(ni2,xpos = 2,ypos = 2)
+        sim = Simulator(tmap,script,[drone1,drone2],[])
+
+        message = Message()
+        message.data = {
+            "destination" : 2,
+            "source" : 1,
+            "ttl" : 1,
+            "payload" : "hello"
+            }
+        drone1.networkInterface.sendMessage(message)
+
+        sim.performTurn()
+
+        payload = drone2.networkInterface.getIncoming()
+        self.assertEqual(payload,"hello")
+
+
 class TestNetworkInterface(ut.TestCase):
     def test_recieve_message(self):
         ni1 = NetworkInterface(1)

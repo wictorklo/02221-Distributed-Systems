@@ -54,15 +54,24 @@ class Simulator:
     def __init__(self,
             initialState, script : 'Script',
             ADrones : 'list[ADrone]', BDrones : 'list[BDrone]',
-            spreadChance = 0.3, ASpeed = 3, BSpeed = 3):
+            spreadChance = 0.3, ASpeed = 3, BSpeed = 3, lineOfSight = 4, transmissionDistance = 4, transmissionsPerTurn = 100):
+
         self.map = initialState 
+
         self.ADrones = ADrones
         self.BDrones = BDrones
+        self.droneMap : 'dict[int,Drone]' = {}
+        for drone in ADrones + BDrones:
+            self.droneMap[drone.ID] = drone
+
         self.script = script
         self.turns = 0
         self.spreadChance = spreadChance
         self.ASpeed = ASpeed
         self.BSpeed = BSpeed
+        self.lineOfSight = lineOfSight 
+        self.transmissionDistance = transmissionDistance
+        self.transmissionsPerTurn = transmissionsPerTurn
 
     def performTurn(self):
         shouldContinue = self.__performScriptedAction()
@@ -77,7 +86,7 @@ class Simulator:
         self.turns += 1
 
     def __performScriptedAction(self):
-        return True #true that ordinary simulation should continue
+        return True  #true that ordinary simulation should continue
 
     def __exstinguishFire(self):
         for drone in self.ADrones: 
@@ -107,7 +116,8 @@ class Simulator:
                 
 
     def __moveDrones(self):
-        for drone in self.ADrones + self.BDrones:
+        drones : 'list[Drone]' = self.ADrones + self.BDrones
+        for drone in drones:
             maxSpeed = (self.ASpeed if drone.type == "A" else self.BSpeed)
             action = drone.getAction()
             x, y = movePosition(drone.xpos,drone.ypos,action.speed * maxSpeed,action.direction)
@@ -117,7 +127,35 @@ class Simulator:
             drone.ypos = y
             
     def __droneObservations(self):
-        pass
+        drones : 'list[Drone]' = self.ADrones + self.BDrones
+        for drone in drones:
+            observation = Observation()
+            for xd, yd in np.ndindex(2 * self.lineOfSight + 1, 2 * self.lineOfSight + 1):
+                x = floor(drone.xpos - self.lineOfSight + xd)
+                y = floor(drone.ypos - self.lineOfSight + yd)
+                if (x >= 0 and x < self.map.shape[0] and 
+                        y >= 0 and y < self.map.shape[1]):
+                    observation.drones.append((self.map[x][y],x,y))
+            drone.giveSensorData(observation)
 
     def __thinkAndSendMessages(self):
-        pass
+        transmissionMap : 'dict[int,set[int]]' = {}
+        drones : 'list[Drone]' = self.ADrones + self.BDrones
+        for drone in drones:
+            transmissionMap[drone.ID] = set()
+
+        for i in range(len(drones)):
+            for j in range(i + 1,len(drones)):
+                if (abs(drones[i].xpos - drones[j].xpos) <= self.transmissionDistance and
+                        abs(drones[i].ypos - drones[j].ypos) <= self.transmissionDistance):
+                    transmissionMap[drones[i].ID].add(drones[j].ID)
+                    transmissionMap[drones[j].ID].add(drones[i].ID)
+
+        for i in range(self.transmissionsPerTurn):
+            for drone in drones:
+                drone.think()
+                transmit = drone.networkInterface.getOutgoing()
+                if transmit:
+                    for ID in transmissionMap[drone.ID]:
+                        self.droneMap[ID].networkInterface.receiveMessage(transmit)
+        

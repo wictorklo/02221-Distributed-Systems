@@ -2,11 +2,11 @@ from collections import deque
 import json
 
 class Message:
-    def __init__(self) -> None:
-        self.data = None
-
-    def __init__(self,transmit):
-        self.loadTransmit(transmit)
+    def __init__(self,transmit = None):
+        if transmit:
+            self.loadTransmit(transmit)
+        else:
+            self.data = {}
 
     def loadTransmit(self,transmit):
         self.data = json.loads(transmit)

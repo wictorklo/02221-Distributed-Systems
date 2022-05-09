@@ -1,13 +1,33 @@
+import json
+from network_interfaces import *
+
+
 class Action:
-    def __init__(self, speed = 0, direction = 0):
+    def __init__(self, speed = 0, direction = 0) -> None:
         self.speed = speed
         self.direction = direction
 
+class Observation:
+    def __init__(self,observationPayload = None):
+        if observationPayload:
+            self.loadObservationPayload(observationPayload)
+        else:
+            self.tiles = []
+            self.drones = []
 
+    def loadObservationPayload(self,observationPayload):
+        data = json.loads(observationPayload)
+        self.tiles = data["tiles"]
+        self.drones = data["drones"]
+
+    def getObservationPayload(self):
+        observation = {"tiles" : self.tiles, "drones" : self.drones}
+        return json.dumps(observation)
 
 class Drone:
-    def __init__(self,networkInterface,xpos = 0, ypos = 0):
+    def __init__(self,networkInterface : 'NetworkInterface',xpos = 0, ypos = 0):
         self.networkInterface = networkInterface
+        self.ID = networkInterface.ID
         self.xpos = xpos
         self.ypos = ypos
 
