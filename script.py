@@ -13,13 +13,15 @@ class Script:
         pass
 
 def succeed1(map, a, b):
-    a[0].networkInterface.sendMessage(Message('{"source": a[0].networkInterface.ID, "destination": b[0].networkInterface.ID, "payload":None}'))
+    a[0].networkInterface.sendMessage(Message('{"source": "'+a[0].networkInterface.ID+'", "destination": "'+b[0].networkInterface.ID+'", "payload":"1", "ttl":5}'))
+    return map, a, b, True
 
 transmissionSucceed = [Script(succeed1)]
 
 def dropped1(map, a, b):
-    a[0].networkInterface.sendMessage(Message('{"source": a[0].networkInterface.ID, "destination": b[0].networkInterface.ID, "payload":None}'))
+    a[0].networkInterface.sendMessage(Message('{"source": "'+a[0].networkInterface.ID+'", "destination": "'+b[0].networkInterface.ID+'", "payload":"1"}'))
     a[0].networkInterface.getOutgoing()
+    return map, a, b, True
 
 transmissionDropped = [Script(dropped1)]
 
