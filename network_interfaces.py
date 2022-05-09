@@ -65,6 +65,14 @@ class NetworkInterface:
             seq = self.seq
         if retries <= -1:
             pass
+        if not 'source' in message.data:
+            message.data['source'] = self.ID
+        if not 'mtype' in message.data:
+            message.data['mtype'] = 'payload'
+        if not 'ttl' in message.data:
+            message.data['ttl'] = 5
+        if not 'seq' in message.data:
+            message.data['seq'] = seq
         self.outGoing.append(message.getTransmit())
         bufferedMessage = BufferMessage(seq, "1", message, 10, retries-1)
         self.timeouts[seq] = bufferedMessage
