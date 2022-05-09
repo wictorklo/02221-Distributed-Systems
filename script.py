@@ -18,6 +18,7 @@ def succeed1(map, a, b):
     message.data = {
         "source" : a[0].networkInterface.ID,
         "destination" : b[0].networkInterface.ID,
+        "mtype": "payload",
         "ttl" : 5,
         "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []})
     }
@@ -31,6 +32,7 @@ def dropped1(map, a, b):
     message.data = {
         "source" : a[0].networkInterface.ID,
         "destination" : b[0].networkInterface.ID,
+        "mtype": "payload",
         "ttl" : 5,
         "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []})
     }

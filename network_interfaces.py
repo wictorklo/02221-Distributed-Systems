@@ -19,6 +19,7 @@ class NetworkInterface:
         self.ID = ID
         self.outGoing = deque()
         self.inComing = deque()
+        self.log = deque()
         self.timeouts = {}
         self.timeoutHandlers = {}
 
@@ -39,7 +40,9 @@ class NetworkInterface:
     #returns a message meant for the drone:
     def getIncoming(self):
         if self.inComing:
-            return self.inComing.popleft()
+            message = self.inComing.popleft()
+            self.log.append(message)
+            return message
         else:
             return None
 
@@ -48,7 +51,17 @@ class NetworkInterface:
     def receiveMessage(self,transmit):
         message = Message(transmit)
         if message.data["destination"] == self.ID:
-            self.inComing.append(message.data["payload"])
+            if message.data["mtype"] == "payload":
+                self.inComing.append(message.data["payload"])
+                #Send ACK
+                ack = Message()
+                ack.data = {
+                    "source": self.ID,
+                    "destination": message.data["source"],
+                    "mtype": "ack",
+                    "ttl": 5
+                    }
+                self.sendMessage(ack)
         elif message.data["ttl"] > 0: #bounce on if meant to someone else and not expired
             message.data["ttl"] -= 1
             self.sendMessage(message)
