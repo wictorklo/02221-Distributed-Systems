@@ -14,33 +14,68 @@ class Message:
     def getTransmit(self):
         return json.dumps(self.data)
 
+class BufferMessage:
+    # Types
+    # 1 - Sent message, awaiting acknowledgement
+    def __init__(self, ID, type, message, timeRemaining = 0, retries = 0):
+        self.ID = ID
+        self.type = type
+        self.message = message
+        self.timeRemaining = timeRemaining
+        self.retries = retries
+    
+    def decay(self):
+        self.timeRemaining -= 1
+        resend = self.timeRemaining <= 0
+        if resend:
+            self.retries -= 1
+        return resend and self.retries >= 0 
+
 class NetworkInterface:
     def __init__(self,ID):
+        self.seq = 0
         self.ID = ID
         self.outGoing = deque()
         self.inComing = deque()
         self.log = deque()
-        self.timeouts = {}
-        self.timeoutHandlers = {}
+        self.timeouts = {} # seq -> BufferMessage
+
+        self.timeoutHandlers = {
+            "1": lambda bm : self.sendMessage(bm.message, bm.retries-1, bm.ID) # 1 - No ack received. Retry.
+        }
 
     def tick(self):
-        for k in self.timeouts:
-            self.timeouts[k] -= 1
-            if self.timeouts[k] <= 0:
-                self.timeoutHandlers[k]()
+        expired = []
+        for key in self.timeouts:
+            bm = self.timeouts[key]
+            if bm.decay():
+                #Resend message with lower retry
+                self.timeoutHandlers[bm.type](bm)
+            expired.append(bm.ID)
+        for e in expired:
+            del self.timeouts[e]
 
 
     #method used by associated drone
     #sends a message to one or other drones
     #destination might be identity of one other drone, gps area, nearest type A drone, etc etc
-    def sendMessage(self,message : 'Message'):
+    def sendMessage(self, message : 'Message', retries = 2, seq = None):
+        if seq == None:
+            self.seq += 1
+            seq = self.seq
+        if retries <= -1:
+            pass
         if not 'source' in message.data:
             message.data['source'] = self.ID
         if not 'mtype' in message.data:
             message.data['mtype'] = 'payload'
         if not 'ttl' in message.data:
             message.data['ttl'] = 5
+        if not 'seq' in message.data:
+            message.data['seq'] = seq
         self.outGoing.append(message.getTransmit())
+        bufferedMessage = BufferMessage(seq, "1", message, 10, retries-1)
+        self.timeouts[seq] = bufferedMessage
 
     #method used by associated drone
     #returns a message meant for the drone:

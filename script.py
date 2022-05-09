@@ -36,7 +36,7 @@ def dropped1(map, a, b):
         "ttl" : 5,
         "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []})
     }
-    a[0].networkInterface.sendMessage(message)
+    a[0].networkInterface.sendMessage(message, retries = 1)
     a[0].networkInterface.getOutgoing()
     return map, a, b, True
 
