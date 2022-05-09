@@ -2,17 +2,11 @@ from pyparsing import nullDebugAction
 from drones import ADrone, BDrone
 from network_interfaces import NetworkInterface, Message
 
-def loadTransmit(self,transmit):
-        self.data = json.loads(transmit)
-        self.source = self.data["source"]
-        self.destination = self.data["destination"]
-        self.payload = self.data["payload"]
-
 
 class Script:
     def __init__(self, script = None):
         if script == None:
-            script = lambda m, a, b : m, a, b
+            script = lambda m, a, b : (m, a, b)
         self.performScriptedAction = script
 
     def performScriptedAction(map, ADrones, BDrones):
@@ -34,7 +28,7 @@ transmissionDropped = [Script(dropped1)]
 class EmptyScript(Script):
     def __init__(self) -> None:
         pass
-    def performScriptedAction(map, ADrones, BDrones):
+    def performScriptedAction(self, map, ADrones, BDrones):
         return (map, ADrones, BDrones, True)
 
 

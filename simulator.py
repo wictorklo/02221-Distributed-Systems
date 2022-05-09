@@ -96,8 +96,8 @@ class Simulator:
         self.__thinkAndSendMessages()
         self.turns += 1
 
-    def __performScriptedAction(self, script):
-        self.map, self.ADrones, self.BDrones, shouldContinue = script.performScriptedAction(self.map, self.ADrones, self.BDrones)
+    def __performScriptedAction(self):
+        self.map, self.ADrones, self.BDrones, shouldContinue = self.script.performScriptedAction(self.map, self.ADrones, self.BDrones)
         return True #true that ordinary simulation should continue
 
     def __exstinguishFire(self):
