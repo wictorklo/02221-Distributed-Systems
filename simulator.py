@@ -43,12 +43,23 @@ def unsetFire(tmap,x,y):
 #TODO: make better printer
 def printMap(tilemap,adrones,bdrones): 
     print(np.flipud(np.transpose(tilemap)))
+    print("--------DRONES---------")
+    for x in range(tilemap.shape[0]):
+        for y in range(tilemap.shape[1]):
+            if any([d.xpos == x and d.ypos == y for d in adrones]):
+                print("A", end="")
+            elif any([d.xpos == x and d.ypos == y for d in bdrones]):
+                print("B", end="")
+            else:
+                print("0", end="")
+        print("\n", end="")
     print("--------ADRONES--------")
     for drone in adrones:
         print("x: " + str(drone.xpos) + ", y: " + str(drone.ypos))
     print("--------BDRONES--------")
     for drone in bdrones:
         print("x: " + str(drone.xpos) + ", y: " + str(drone.ypos))
+    
 
 class Simulator:
     def __init__(self,
@@ -85,8 +96,9 @@ class Simulator:
         self.__thinkAndSendMessages()
         self.turns += 1
 
-    def __performScriptedAction(self):
-        return True  #true that ordinary simulation should continue
+    def __performScriptedAction(self, script):
+        self.map, self.ADrones, self.BDrones, shouldContinue = script.performScriptedAction(self.map, self.ADrones, self.BDrones)
+        return True #true that ordinary simulation should continue
 
     def __exstinguishFire(self):
         for drone in self.ADrones: 
