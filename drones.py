@@ -97,7 +97,7 @@ class ADrone(Drone):
                     frontier.append((x1,y1))
         else:
             return Action()
-        
+            
         return Action(speed = 1, direction = calculateDirection(self.getPosition(),(x,y)))
 
 class BDrone(Drone):

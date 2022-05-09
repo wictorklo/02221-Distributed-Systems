@@ -149,7 +149,18 @@ class TestSimulator(ut.TestCase):
             isOnFire(drone1.map[1][0]) and
             isOnFire(drone1.map[1][1])
         )
-        
+    
+    def test_seeks_fire(self):
+        script = EmptyScript()
+        tmap = emptyMap(50,50,flammable=True)
+        setFire(tmap,0,0)
+
+        ni1 = NetworkInterface(1)
+        drone1 = ADrone(ni1,tmap,xpos = 49,ypos = 49)
+
+        self.assertAlmostEqual(drone1.getAction().direction,math.pi * 3 / 4)
+        self.assertEqual(drone1.getAction().speed,1)
+
 
 class TestNetworkInterface(ut.TestCase):
     def test_recieve_message(self):
