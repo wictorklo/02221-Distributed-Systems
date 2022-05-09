@@ -114,12 +114,12 @@ class TestNetworkInterface(ut.TestCase):
 
     def test_bounce_message(self):
         ni1 = NetworkInterface(1)
-        message = {
+        message = Message()
+        message.loadData({
             "destination" : 2,
             "source" : 0,
             "ttl" : 1,
-            "payload" : "hello"
-            }
-        ni1.receiveMessage(json.dumps(message))
-        message["ttl"] -= 1
-        self.assertEqual(json.loads(ni1.getOutgoing()),message)
+            "payload" : "hello"})
+        ni1.receiveMessage(message.getTransmit())
+        message.data["ttl"] -= 1
+        self.assertEqual(Message(ni1.getOutgoing()).data,message.data)

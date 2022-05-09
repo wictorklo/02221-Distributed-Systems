@@ -8,11 +8,22 @@ class Message:
         else:
             self.data = {}
 
+    def loadData(self,data):
+        self.data = data
+        self.source = self.data["source"]
+        self.destination = self.data["destination"]
+        self.payload = self.data["payload"]
+
     def loadTransmit(self,transmit):
         self.data = json.loads(transmit)
         self.source = self.data["source"]
         self.destination = self.data["destination"]
         self.payload = self.data["payload"]
+
+    def updateData(self):
+        self.data["source"] = self.source
+        self.data["destination"] = self.destination
+        self.data["payload"] = self.payload
 
     def getTransmit(self):
         return json.dumps(self.data)

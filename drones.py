@@ -1,6 +1,6 @@
 import json
 from network_interfaces import *
-
+from environment import emptyMap
 
 class Action:
     def __init__(self, speed = 0, direction = 0) -> None:
@@ -25,9 +25,10 @@ class Observation:
         return json.dumps(observation)
 
 class Drone:
-    def __init__(self,networkInterface : 'NetworkInterface',xpos = 0, ypos = 0):
+    def __init__(self, networkInterface : 'NetworkInterface', initialMap, xpos = 0, ypos = 0):
         self.networkInterface = networkInterface
         self.ID = networkInterface.ID
+        self.map = initialMap
         self.xpos = xpos
         self.ypos = ypos
 
