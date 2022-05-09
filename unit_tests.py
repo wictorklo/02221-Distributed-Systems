@@ -159,6 +159,7 @@ class TestNetworkInterface(ut.TestCase):
             "destination" : 1,
             "ttl" : 2,
             "mtype" : "payload",
+            "seq" : 0,
             "payload" : "hello"
             }))
         self.assertEqual(ni1.getIncoming(),"hello")
@@ -171,6 +172,7 @@ class TestNetworkInterface(ut.TestCase):
             "destination" : 2,
             "ttl" : 2,
             "mtype" : "payload",
+            "seq" : 1,
             "payload" : "hello"}
         ni1.receiveMessage(message.getTransmit())
         message.data["ttl"] -= 1
