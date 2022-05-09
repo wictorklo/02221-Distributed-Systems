@@ -19,7 +19,16 @@ class NetworkInterface:
         self.ID = ID
         self.outGoing = deque()
         self.inComing = deque()
-        self.inbox = deque()
+        self.log = deque()
+        self.timeouts = {}
+        self.timeoutHandlers = {}
+
+    def tick(self):
+        for k in self.timeouts:
+            self.timeouts[k] -= 1
+            if self.timeouts[k] <= 0:
+                self.timeoutHandlers[k]()
+
 
     #method used by associated drone
     #sends a message to one or other drones
@@ -32,7 +41,7 @@ class NetworkInterface:
     def getIncoming(self):
         if self.inComing:
             message = self.inComing.popleft()
-            self.inbox.append(message)
+            self.log.append(message)
             return message
         else:
             return None

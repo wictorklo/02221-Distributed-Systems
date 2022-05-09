@@ -1,6 +1,7 @@
 import json
 from network_interfaces import *
 from environment import emptyMap
+import copy
 
 class Action:
     def __init__(self, speed = 0, direction = 0) -> None:
@@ -28,7 +29,8 @@ class Drone:
     def __init__(self, networkInterface : 'NetworkInterface', initialMap, xpos = 0, ypos = 0):
         self.networkInterface = networkInterface
         self.ID = networkInterface.ID
-        self.map = initialMap
+        self.map = copy.deepcopy(initialMap)
+        self.otherDrones = [] #map from droneid to (type,x,y)
         self.xpos = xpos
         self.ypos = ypos
 
@@ -40,6 +42,7 @@ class Drone:
     #give drone computing power
     #this can update action returned by getAction(), put and get messages in and from the network interface 
     def think(self):
+        self.networkInterface.tick()
         while True:
             payload = self.networkInterface.getIncoming()
             if not payload:
@@ -47,7 +50,8 @@ class Drone:
             
             data = json.loads(payload)
             if data["type"] == "observation":
-                pass
+                observation = Observation(payload) 
+                self.__updateStateObservation(observation)
 
     #give drone sensor data
     def giveSensorData(self,observation):
@@ -57,19 +61,19 @@ class Drone:
         return (self.xpos,self.ypos)
 
     #update current state based on observation
-    def __updateStateObservation(self,observation):
-        pass
-
-    #update current state based on information in message
-    def __updateStateMessage(self,message):
-        pass
+    def __updateStateObservation(self,observation : 'Observation'):
+        for tilestate, x, y in observation.tiles:
+            self.map[x][y] = tilestate
+        for droneID, droneType, x, y in observation.drones:
+            self.otherDrones[droneID] = (droneType,x,y)
+        
 
 class ADrone(Drone):
-    def __init__(self, networkInterface,xpos = 0, ypos = 0):
-        super().__init__(networkInterface,xpos,ypos)
+    def __init__(self, networkInterface,initialMap,xpos = 0, ypos = 0):
+        super().__init__(networkInterface,initialMap,xpos,ypos)
         self.type = "A"
 
 class BDrone(Drone):
-    def __init__(self, networkInterface,xpos = 0, ypos = 0):
-        super().__init__(networkInterface,xpos,ypos)
+    def __init__(self, networkInterface,initialMap,xpos = 0, ypos = 0):
+        super().__init__(networkInterface,initialMap,xpos,ypos)
         self.type = "B"

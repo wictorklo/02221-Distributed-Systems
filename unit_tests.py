@@ -32,12 +32,12 @@ class TestSimulator(ut.TestCase):
         sim.performTurn()
     
     def test_move_corner_to_corner(self):
-        ni1 = NetworkInterface(0)
-        drone1 = ADrone(ni1,xpos = 0,ypos = 0)
-        drone1.getAction = lambda : Action(1,math.pi / 4)
-
         script = EmptyScript()
         tmap = emptyMap(10,10)
+        ni1 = NetworkInterface(0)
+        drone1 = ADrone(ni1,tmap,xpos = 0,ypos = 0)
+        drone1.getAction = lambda : Action(1,math.pi / 4)
+
         sim = Simulator(tmap,script,[drone1],[])
 
         for i in range(6):
@@ -66,7 +66,7 @@ class TestSimulator(ut.TestCase):
         tmap = emptyMap(10,10,flammable=True)
         setFire(tmap,0,0)
         ni1 = NetworkInterface(0)
-        drone1 = ADrone(ni1,xpos = 1,ypos = 1)
+        drone1 = ADrone(ni1,tmap,xpos = 1,ypos = 1)
         sim = Simulator(tmap,script,[drone1],[])
 
         for i in range(3):
@@ -82,9 +82,9 @@ class TestSimulator(ut.TestCase):
         tmap = emptyMap(10,10,flammable=True)
         ni1 = NetworkInterface(1)
         ni2 = NetworkInterface(2)
-        drone1 = ADrone(ni1,xpos = 1,ypos = 1)
-        drone2 = ADrone(ni2,xpos = 2,ypos = 2)
-        drone2.think = lambda  : None #turn off mechanism that consumes messages in drone2
+        drone1 = ADrone(ni1,tmap,xpos = 1,ypos = 1)
+        drone2 = ADrone(ni2,tmap,xpos = 2,ypos = 2)
+        drone2.think = lambda : None #turn off mechanism that consumes messages in drone2
         sim = Simulator(tmap,script,[drone1,drone2],[])
 
         message = Message()
