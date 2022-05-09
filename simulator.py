@@ -97,7 +97,7 @@ class Simulator:
                 y = floor(drone.ypos - self.lineOfSight + yd)
                 if (x >= 0 and x < self.map.shape[0] and 
                         y >= 0 and y < self.map.shape[1]):
-                    observation.drones.append((self.map[x][y],x,y))
+                    observation.tiles.append((self.map[x][y],x,y))
             drone.giveSensorData(observation)
 
     def __thinkAndSendMessages(self):
