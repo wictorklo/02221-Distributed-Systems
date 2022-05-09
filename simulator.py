@@ -4,68 +4,14 @@ import random as rnd
 from drones import *
 from script import *
 from util import *
-
-tiletype = np.dtype("u1")
-
-#State is a tile-grid of 1byte numbers. 
-#First index is horizontal position and second vertical
-#[0][0] is bottom left corner
-def emptyMap(xsize,ysize,flammable = False):
-    if flammable:
-        return np.full((xsize,ysize),1,dtype=tiletype)
-    else:
-        return np.zeros((xsize,ysize),dtype=tiletype)
-
-
-
-#meaning of bits in byte-map:
-#1st bit - on for flammable material
-#2nd bit - on if area on fire
-#... Something that obstructs view? Obstructs communication?
-
-#speed must be at least sqrt(2), otherwise you could just end up in same tile
-
-def isFlammable(tile):
-    return (tile & 1)
-def isOnFire(tile):
-    return (tile & 2) >> 1
-
-def setFlammable(tmap,x,y):
-    tmap[x][y] |= 1
-def setFire(tmap,x,y):
-    tmap[x][y] |= 2
-
-def unsetFlammable(tmap,x,y):
-    tmap[x][y] &= ~1
-def unsetFire(tmap,x,y):
-    tmap[x][y] &= ~2
-
-#TODO: make better printer
-def printMap(tilemap,adrones,bdrones): 
-    print(np.flipud(np.transpose(tilemap)))
-    print("--------DRONES---------")
-    for x in range(tilemap.shape[0]):
-        for y in range(tilemap.shape[1]):
-            if any([d.xpos == x and d.ypos == y for d in adrones]):
-                print("A", end="")
-            elif any([d.xpos == x and d.ypos == y for d in bdrones]):
-                print("B", end="")
-            else:
-                print("0", end="")
-        print("\n", end="")
-    print("--------ADRONES--------")
-    for drone in adrones:
-        print("x: " + str(drone.xpos) + ", y: " + str(drone.ypos))
-    print("--------BDRONES--------")
-    for drone in bdrones:
-        print("x: " + str(drone.xpos) + ", y: " + str(drone.ypos))
-    
+from environment import *
 
 class Simulator:
     def __init__(self,
             initialState, script : 'Script',
             ADrones : 'list[ADrone]', BDrones : 'list[BDrone]',
-            spreadChance = 0.3, ASpeed = 3, BSpeed = 3, lineOfSight = 4, transmissionDistance = 4, transmissionsPerTurn = 100):
+            spreadChance = 0.3, burnoutChance = 0.04, ASpeed = 3, BSpeed = 3, lineOfSight = 4, 
+            transmissionDistance = 4, transmissionsPerTurn = 100):
 
         self.map = initialState 
 
@@ -78,6 +24,7 @@ class Simulator:
         self.script = script
         self.turns = 0
         self.spreadChance = spreadChance
+        self.burnoutChance = burnoutChance
         self.ASpeed = ASpeed
         self.BSpeed = BSpeed
         self.lineOfSight = lineOfSight 
@@ -115,7 +62,10 @@ class Simulator:
         spreadmap = np.zeros(self.map.shape,dtype=tiletype)
         for x, y in np.ndindex(self.map.shape): 
             if isOnFire(self.map[x,y]): #if tile is on fire
-                #TODO: add chance of fire burning out
+                if rnd.random() <= self.burnoutChance:
+                    unsetFire(self.map,x,y)
+                    unsetFlammable(self.map,x,y)
+                    continue
                 for xd, yd in np.ndindex((3,3)): #for all neighbours
                     x1 = x + xd - 1 #subtract 1 to consider range [-1,0,1]
                     y1 = y + yd - 1
