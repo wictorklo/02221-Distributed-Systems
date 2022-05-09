@@ -1,7 +1,10 @@
 import json
+from math import floor
 from network_interfaces import *
-from environment import emptyMap
+from environment import emptyMap, isOnFire
 import copy
+
+from util import calculateDirection
 
 class Action:
     def __init__(self, speed = 0, direction = 0) -> None:
@@ -73,6 +76,29 @@ class ADrone(Drone):
         super().__init__(networkInterface,initialMap,xpos,ypos)
         self.type = "A"
 
+    def getAction(self):
+        #bfs for closest fire
+        considered = set()
+        frontier = deque()
+        considered.add((floor(self.xpos),floor(self.ypos)))
+        frontier.append((floor(self.xpos),floor(self.ypos)))
+
+        while frontier:
+            x, y = frontier.popleft()
+            if isOnFire(self.map[x][y]):
+                break
+
+            for xd, yd in [(-1,0),(1,0),(0,-1),(0,1)]:
+                x1, y1 = (x + xd, y + yd)
+                if (not (x1, y1) in considered and
+                        x1 >= 0 and x1 < self.map.shape[0] and 
+                        y1 >= 0 and y1 < self.map.shape[1]):
+                    considered.add((x1,y1))
+                    frontier.append((x1,y1))
+        else:
+            return Action()
+        
+        return Action(speed = 1, direction = calculateDirection(self.getPosition(),(x,y)))
 
 class BDrone(Drone):
     def __init__(self, networkInterface,initialMap,xpos = 0, ypos = 0):

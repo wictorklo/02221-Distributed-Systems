@@ -34,6 +34,12 @@ class NetworkInterface:
     #sends a message to one or other drones
     #destination might be identity of one other drone, gps area, nearest type A drone, etc etc
     def sendMessage(self,message : 'Message'):
+        if not 'source' in message.data:
+            message.data['source'] = self.ID
+        if not 'mtype' in message.data:
+            message.data['mtype'] = 'payload'
+        if not 'ttl' in message.data:
+            message.data['ttl'] = 5
         self.outGoing.append(message.getTransmit())
 
     #method used by associated drone

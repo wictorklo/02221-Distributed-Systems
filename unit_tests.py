@@ -90,9 +90,6 @@ class TestSimulator(ut.TestCase):
         message = Message()
         message.data = {
             "destination" : 2,
-            "source" : 1,
-            "ttl" : 1,
-            "mtype": "payload",
             "payload" : "hello"
             }
         drone1.networkInterface.sendMessage(message)
@@ -139,9 +136,7 @@ class TestSimulator(ut.TestCase):
         observation.tiles.append((3,1,1))
         message = Message()
         message.data = {
-            'source' : 2,
             'destination' : 1,
-            'ttl' : 1,
             'payload' : observation.getObservationPayload()
         }
         drone2.networkInterface.sendMessage(message)
@@ -160,10 +155,10 @@ class TestNetworkInterface(ut.TestCase):
     def test_recieve_message(self):
         ni1 = NetworkInterface(1)
         ni1.receiveMessage(json.dumps({
-            "destination" : 1,
             "source" : 0,
-            "ttl" : 1,
-            "mtype": "payload",
+            "destination" : 1,
+            "ttl" : 2,
+            "mtype" : "payload",
             "payload" : "hello"
             }))
         self.assertEqual(ni1.getIncoming(),"hello")
@@ -172,10 +167,10 @@ class TestNetworkInterface(ut.TestCase):
         ni1 = NetworkInterface(1)
         message = Message()
         message.data = {
-            "destination" : 2,
             "source" : 0,
-            "ttl" : 1,
-            "mtype": "payload",
+            "destination" : 2,
+            "ttl" : 2,
+            "mtype" : "payload",
             "payload" : "hello"}
         ni1.receiveMessage(message.getTransmit())
         message.data["ttl"] -= 1

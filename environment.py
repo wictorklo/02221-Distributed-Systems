@@ -1,4 +1,5 @@
 import numpy as np
+from math import floor
 
 tiletype = np.dtype("u1")
 
@@ -40,9 +41,9 @@ def printMap(tilemap,adrones,bdrones):
     print("--------DRONES---------")
     for x in range(tilemap.shape[0]):
         for y in range(tilemap.shape[1]):
-            if any([d.xpos == x and d.ypos == y for d in adrones]):
+            if any([floor(d.xpos) == x and floor(d.ypos) == y for d in adrones]):
                 print("A", end="")
-            elif any([d.xpos == x and d.ypos == y for d in bdrones]):
+            elif any([floor(d.xpos) == x and floor(d.ypos) == y for d in bdrones]):
                 print("B", end="")
             else:
                 print("0", end="")
