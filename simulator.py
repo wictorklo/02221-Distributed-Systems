@@ -65,7 +65,8 @@ class Simulator:
     def __init__(self,
             initialState, script : 'Script',
             ADrones : 'list[ADrone]', BDrones : 'list[BDrone]',
-            spreadChance = 0.3, ASpeed = 3, BSpeed = 3, lineOfSight = 4, transmissionDistance = 4, transmissionsPerTurn = 100):
+            spreadChance = 0.3, burnoutChance = 0.04, ASpeed = 3, BSpeed = 3, lineOfSight = 4, 
+            transmissionDistance = 4, transmissionsPerTurn = 100):
 
         self.map = initialState 
 
@@ -78,6 +79,7 @@ class Simulator:
         self.script = script
         self.turns = 0
         self.spreadChance = spreadChance
+        self.burnoutChance = burnoutChance
         self.ASpeed = ASpeed
         self.BSpeed = BSpeed
         self.lineOfSight = lineOfSight 
@@ -115,7 +117,10 @@ class Simulator:
         spreadmap = np.zeros(self.map.shape,dtype=tiletype)
         for x, y in np.ndindex(self.map.shape): 
             if isOnFire(self.map[x,y]): #if tile is on fire
-                #TODO: add chance of fire burning out
+                if rnd.random() <= self.burnoutChance:
+                    unsetFire(self.map,x,y)
+                    unsetFlammable(self.map,x,y)
+                    continue
                 for xd, yd in np.ndindex((3,3)): #for all neighbours
                     x1 = x + xd - 1 #subtract 1 to consider range [-1,0,1]
                     y1 = y + yd - 1
