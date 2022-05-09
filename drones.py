@@ -41,11 +41,13 @@ class Drone:
     #this can update action returned by getAction(), put and get messages in and from the network interface 
     def think(self):
         while True:
-            m = self.networkInterface.getIncoming()
-            if not m:
+            payload = self.networkInterface.getIncoming()
+            if not payload:
                 break
-
             
+            data = json.loads(payload)
+            if data["type"] == "observation":
+                pass
 
     #give drone sensor data
     def giveSensorData(self,observation):
