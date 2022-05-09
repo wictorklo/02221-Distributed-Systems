@@ -3,6 +3,8 @@ from math import floor
 from network_interfaces import *
 from environment import emptyMap, isOnFire
 import copy
+import math
+import random as rnd
 
 from util import calculateDirection
 
@@ -97,10 +99,17 @@ class ADrone(Drone):
                     frontier.append((x1,y1))
         else:
             return Action()
-            
+
         return Action(speed = 1, direction = calculateDirection(self.getPosition(),(x,y)))
 
 class BDrone(Drone):
-    def __init__(self, networkInterface,initialMap,xpos = 0, ypos = 0):
+    def __init__(self, networkInterface, initialMap, xpos = 0, ypos = 0, drunkWalk = False):
         super().__init__(networkInterface,initialMap,xpos,ypos)
         self.type = "B"
+        self.drunkWalk = drunkWalk
+
+    def getAction(self):
+        if self.drunkWalk:
+            return Action(speed = 1, direction = rnd.random() * 2 * math.pi)
+        else:
+            return Action()
