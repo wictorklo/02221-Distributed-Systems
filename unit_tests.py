@@ -92,6 +92,7 @@ class TestSimulator(ut.TestCase):
             "destination" : 2,
             "source" : 1,
             "ttl" : 1,
+            "mtype": "payload",
             "payload" : "hello"
             }
         drone1.networkInterface.sendMessage(message)
@@ -109,6 +110,7 @@ class TestNetworkInterface(ut.TestCase):
             "destination" : 1,
             "source" : 0,
             "ttl" : 1,
+            "mtype": "payload",
             "payload" : "hello"
             }))
         self.assertEqual(ni1.getIncoming(),"hello")
@@ -120,6 +122,7 @@ class TestNetworkInterface(ut.TestCase):
             "destination" : 2,
             "source" : 0,
             "ttl" : 1,
+            "mtype": "payload",
             "payload" : "hello"}
         ni1.receiveMessage(message.getTransmit())
         message.data["ttl"] -= 1
