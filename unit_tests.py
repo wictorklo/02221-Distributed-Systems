@@ -100,7 +100,60 @@ class TestSimulator(ut.TestCase):
 
         payload = drone2.networkInterface.getIncoming()
         self.assertEqual(payload,"hello")
+    
+    def test_internal_state_change_observation(self):
+        script = EmptyScript()
+        tmap = emptyMap(10,10,flammable=True)
+        ni1 = NetworkInterface(1)
+        drone1 = BDrone(ni1,tmap,xpos = 1,ypos = 1)
+        sim = Simulator(tmap,script,[],[drone1])
 
+        setFire(sim.map,0,0)
+        setFire(sim.map,0,1)
+        setFire(sim.map,1,0)
+        setFire(sim.map,1,1)
+        sim.performTurn()
+
+        self.assertTrue(
+            isOnFire(drone1.map[0][0]) or
+            isOnFire(drone1.map[0][1]) or
+            isOnFire(drone1.map[1][0]) or
+            isOnFire(drone1.map[1][1])
+        )
+    
+    
+    def test_internal_state_change_message(self):
+        script = EmptyScript()
+        tmap = emptyMap(50,50,flammable=True)
+        ni1 = NetworkInterface(1)
+        ni2 = NetworkInterface(2)
+        drone1 = BDrone(ni1,tmap,xpos = 49,ypos = 49)
+        drone2 = BDrone(ni2,tmap,xpos = 46,ypos = 46)
+        sim = Simulator(tmap,script,[],[drone1,drone2])
+
+        observation = Observation()
+        observation.tiles.append((3,0,0))
+        observation.tiles.append((3,1,0))
+        observation.tiles.append((3,0,1))
+        observation.tiles.append((3,1,1))
+        message = Message()
+        message.data = {
+            'source' : 2,
+            'destination' : 1,
+            'ttl' : 1,
+            'payload' : observation.getObservationPayload()
+        }
+        drone2.networkInterface.sendMessage(message)
+
+        sim.performTurn()
+
+        self.assertTrue(
+            isOnFire(drone1.map[0][0]) and
+            isOnFire(drone1.map[0][1]) and
+            isOnFire(drone1.map[1][0]) and
+            isOnFire(drone1.map[1][1])
+        )
+        
 
 class TestNetworkInterface(ut.TestCase):
     def test_recieve_message(self):

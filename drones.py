@@ -22,7 +22,7 @@ class Observation:
         self.drones = data["drones"]
 
     def getObservationPayload(self):
-        observation = {"tiles" : self.tiles, "drones" : self.drones}
+        observation = {"type" : "observation", "tiles" : self.tiles, "drones" : self.drones}
         return json.dumps(observation)
 
 class Drone:
@@ -72,6 +72,7 @@ class ADrone(Drone):
     def __init__(self, networkInterface,initialMap,xpos = 0, ypos = 0):
         super().__init__(networkInterface,initialMap,xpos,ypos)
         self.type = "A"
+
 
 class BDrone(Drone):
     def __init__(self, networkInterface,initialMap,xpos = 0, ypos = 0):
