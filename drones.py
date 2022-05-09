@@ -4,7 +4,6 @@ class Action:
         self.direction = direction
 
 
-
 class Drone:
     def __init__(self,networkInterface,xpos = 0, ypos = 0):
         self.networkInterface = networkInterface
