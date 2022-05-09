@@ -25,7 +25,7 @@ class TestMessageDelivered(ut.TestCase):
         BDrones = [BDrone(NetworkInterface("D2"),map, 2, 2)]
         sim = Simulator(map,script,ADrones,BDrones)
         sim.performTurn()
-        assert(len(sim.BDrones[0].networkInterface.inbox) > 0)
+        assert(len(sim.BDrones[0].networkInterface.log) > 0)
 
     def test_propagate_message(self):
         # D1 sends a message to D2 by propagating it through D3
@@ -35,4 +35,4 @@ class TestMessageDelivered(ut.TestCase):
         BDrones = [BDrone(NetworkInterface("D2"),map, 6, 6), BDrone(NetworkInterface("D3"),map, 3, 3)]
         sim = Simulator(map,script,ADrones,BDrones)
         sim.performTurn()
-        assert(len(sim.BDrones[0].networkInterface.inbox) > 0)
+        assert(len(sim.BDrones[0].networkInterface.log) > 0)
