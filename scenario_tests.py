@@ -14,7 +14,7 @@ class TestMessageDropped(ut.TestCase):
         BDrones = [BDrone(NetworkInterface("D2"),map, 2, 2)]
         sim = Simulator(map,script,ADrones,BDrones)
         sim.performTurn()
-        assert(sim.BDrones[0].networkInterface.getOutgoing() == None)
+        assert(len(sim.BDrones[0].networkInterface.log) == 0)
 
 class TestMessageDelivered(ut.TestCase):
     def test_Deliver_message(self):
