@@ -42,6 +42,7 @@ class Drone:
     #give drone computing power
     #this can update action returned by getAction(), put and get messages in and from the network interface 
     def think(self):
+        self.networkInterface.tick()
         while True:
             payload = self.networkInterface.getIncoming()
             if not payload:
