@@ -84,6 +84,7 @@ class TestSimulator(ut.TestCase):
         ni2 = NetworkInterface(2)
         drone1 = ADrone(ni1,xpos = 1,ypos = 1)
         drone2 = ADrone(ni2,xpos = 2,ypos = 2)
+        drone2.think = lambda  : None #turn off mechanism that consumes messages in drone2
         sim = Simulator(tmap,script,[drone1,drone2],[])
 
         message = Message()
@@ -115,11 +116,11 @@ class TestNetworkInterface(ut.TestCase):
     def test_bounce_message(self):
         ni1 = NetworkInterface(1)
         message = Message()
-        message.loadData({
+        message.data = {
             "destination" : 2,
             "source" : 0,
             "ttl" : 1,
-            "payload" : "hello"})
+            "payload" : "hello"}
         ni1.receiveMessage(message.getTransmit())
         message.data["ttl"] -= 1
         self.assertEqual(Message(ni1.getOutgoing()).data,message.data)
