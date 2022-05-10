@@ -16,13 +16,13 @@ class Script:
 def succeed1(map, a, b):
     message = Message()
     message.data = {
-        "source" : a[0].networkInterface.ID,
-        "destination" : b[0].networkInterface.ID,
+        "source" : b[0].networkInterface.ID,
+        "destination" : a[0].networkInterface.ID,
         "mtype": "payload",
         "ttl" : 5,
         "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []})
     }
-    a[0].networkInterface.sendMessage(message)
+    b[0].networkInterface.sendMessage(message)
     return map, a, b, True
 
 transmissionSucceed = [Script(succeed1)]
@@ -36,7 +36,21 @@ def dropped1(map, a, b):
         "ttl" : 5,
         "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []})
     }
-    a[0].networkInterface.sendMessage(message, retries = 1)
+    a[0].networkInterface.sendMessage(message, retries = 0)
+    a[0].networkInterface.getOutgoing()
+    return map, a, b, True
+
+def retry(map, a, b):
+    message = Message()
+    message.data = {
+        "source" : a[0].networkInterface.ID,
+        "destination" : b[0].networkInterface.ID,
+        "mtype": "payload",
+        "ttl" : 5,
+        "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []}),
+        "seq" : 1
+    }
+    a[0].networkInterface.sendMessage(message)
     a[0].networkInterface.getOutgoing()
     return map, a, b, True
 
