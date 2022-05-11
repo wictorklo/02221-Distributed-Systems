@@ -14,7 +14,7 @@ class TestMessageDropped(ut.TestCase):
         BDrones = [BDrone(NetworkInterface("D2"),map, 2, 2)]
         sim = Simulator(map,script,ADrones,BDrones)
         sim.performTurn()
-        assert(len(sim.BDrones[0].networkInterface.log) == 0)
+        self.assertTrue(len(sim.BDrones[0].networkInterface.log) == 0)
     
     def test_drop_retry(self):
         #D1 sends message to D2 which is dropped during transmission. Succeeds on retry.
@@ -24,7 +24,7 @@ class TestMessageDropped(ut.TestCase):
         BDrones = [BDrone(NetworkInterface("D2"),map, 2, 2)]
         sim = Simulator(map,script,ADrones,BDrones)
         sim.performTurn()
-        assert(len(sim.BDrones[0].networkInterface.log) == 1)
+        self.assertTrue(len(sim.BDrones[0].networkInterface.log) == 1)
 
 class TestMessageDelivered(ut.TestCase):
     def test_deliver_message(self):
@@ -35,7 +35,7 @@ class TestMessageDelivered(ut.TestCase):
         BDrones = [BDrone(NetworkInterface("D2"),map, 2, 2)]
         sim = Simulator(map,script,ADrones,BDrones)
         sim.performTurn()
-        assert(len(sim.ADrones[0].networkInterface.log) > 0)
+        self.assertTrue(len(sim.ADrones[0].networkInterface.log) > 0)
 
     def test_propagate_message(self):
         # D1 sends a message to D2 by propagating it through D3
@@ -45,7 +45,7 @@ class TestMessageDelivered(ut.TestCase):
         BDrones = [BDrone(NetworkInterface("D2"),map, 6, 6), BDrone(NetworkInterface("D3"),map, 3, 3)]
         sim = Simulator(map,script,ADrones,BDrones)
         sim.performTurn()
-        assert(len(sim.ADrones[0].networkInterface.log) > 0)
+        self.assertTrue(len(sim.ADrones[0].networkInterface.log) > 0)
     
     #TODO: Test that ACK is received and stops resends
     def test_deliver_ack_message(self):
@@ -56,10 +56,32 @@ class TestMessageDelivered(ut.TestCase):
         BDrones = [BDrone(NetworkInterface("D2"),map, 2, 2)]
         sim = Simulator(map,script,ADrones,BDrones, transmissionsPerTurn=1)
         sim.performTurn()
-        assert(len(sim.ADrones[0].networkInterface.log) == 1)
-        assert("ack" in sim.ADrones[0].networkInterface.outGoing[0])
+        self.assertTrue(len(sim.ADrones[0].networkInterface.log) == 1)
+        self.assertTrue("ack" in sim.ADrones[0].networkInterface.outGoing[0])
         # Still awaiting ack
-        assert(1 in sim.BDrones[0].networkInterface.timeouts.keys()) 
+        self.assertTrue(1 in sim.BDrones[0].networkInterface.timeouts.keys()) 
         sim.performTurn()
         # Ack received, deleting message.
-        assert(1 not in sim.BDrones[0].networkInterface.timeouts.keys())
+        self.assertTrue(1 not in sim.BDrones[0].networkInterface.timeouts.keys())
+
+class TestNoDuplicates(ut.TestCase):
+    def test_no_duplicate_diamond(self):
+        script = EmptyScript()
+        map = emptyMap(100,100)
+        adrones = [
+            ADrone(NetworkInterface(1),map, 0, 0),
+            ADrone(NetworkInterface(2),map, 0, 3),
+            ADrone(NetworkInterface(3),map, 0, 3.5),
+            ADrone(NetworkInterface(4),map, 0, 6)]
+        sim = Simulator(map,script,adrones,[],transmissionsPerTurn=1,transmissionDistance=4)
+
+        message = Message()
+        message.data = {
+            "destination" : 4,
+            "payload" : json.dumps({"type":"None"})
+        }
+
+        adrones[0].networkInterface.sendMessage(message)
+        sim.performTurn()
+        sim.performTurn()
+        self.assertEqual(len(adrones[3].networkInterface.log),1)

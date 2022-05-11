@@ -31,13 +31,14 @@ class BufferMessage:
         return resend and self.retries >= 1 
 
 class NetworkInterface:
-    def __init__(self,ID):
+    def __init__(self,ID,defaultTTL = 5):
         self.seq = 0
         self.ID = ID
-        self.outGoing = deque()
+        self.outGoing : 'deque[Message]'= deque()
         self.inComing = deque()
-        self.log = deque()
+        self.log  : 'deque[Message]' = deque()
         self.timeouts = {} # seq -> BufferMessage
+        self.defaultTTL = defaultTTL
 
         self.timeoutHandlers = {
             "1": lambda bm : self.sendMessage(bm.message, bm.retries) # 1 - No ack received. Retry.
@@ -62,17 +63,10 @@ class NetworkInterface:
     def sendMessage(self, message : 'Message', retries = 2):
         if retries <= 0:
             pass
-        if not 'source' in message.data:
-            message.data['source'] = self.ID
-        if not 'mtype' in message.data:
-            message.data['mtype'] = 'payload'
-        if not 'ttl' in message.data:
-            message.data['ttl'] = 5
-        if not 'seq' in message.data:
-            self.seq += 1
-            message.data['seq'] = self.seq
-            
+        
+        self.__autoComplete(message)
         self.outGoing.append(message.getTransmit())
+
         bufferedMessage = BufferMessage(self.seq, "1", message, 50, retries-1)
         if message.data["mtype"] == "payload":
             self.timeouts[self.seq] = bufferedMessage
@@ -94,19 +88,11 @@ class NetworkInterface:
             if message.data["mtype"] == "payload" and not any(l.data["seq"] == message.data["seq"] and l.data["source"] == message.data["source"] for l in self.log):
                 self.log.append(message)
                 self.inComing.append(message.data["payload"])
-                #Send ACK
-                ack = Message()
-                ack.data = {
-                    "source": self.ID,
-                    "destination": message.data["source"],
-                    "mtype": "ack",
-                    "ttl": 5,
-                    "seq": message.data["seq"]
-                    }
-                self.sendMessage(ack)
+                self.__sendAck(message)
             elif message.data["mtype"] == "ack":
                 if message.data["seq"] in self.timeouts:
                     del self.timeouts[message.data["seq"]]
+
         elif message.data["ttl"] > 0: #bounce on if meant to someone else and not expired
             message.data["ttl"] -= 1
             self.sendMessage(message)
@@ -118,3 +104,25 @@ class NetworkInterface:
             return self.outGoing.popleft()
         else:
             return None
+
+    def __sendAck(self,message):
+        ack = Message()
+        ack.data = {
+            "source": self.ID,
+            "destination": message.data["source"],
+            "mtype": "ack",
+            "ttl": self.defaultTTL,
+            "seq": message.data["seq"]
+            }
+        self.sendMessage(ack)
+
+    def __autoComplete(self,message : 'Message'):
+        if not 'source' in message.data:
+            message.data['source'] = self.ID
+        if not 'mtype' in message.data:
+            message.data['mtype'] = 'payload'
+        if not 'ttl' in message.data:
+            message.data['ttl'] = self.defaultTTL
+        if not 'seq' in message.data:
+            self.seq += 1
+            message.data['seq'] = self.seq
