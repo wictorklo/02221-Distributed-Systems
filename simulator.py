@@ -45,7 +45,7 @@ class Simulator:
 
     def __performScriptedAction(self):
         self.map, self.ADrones, self.BDrones, shouldContinue = self.script.performScriptedAction(self.map, self.ADrones, self.BDrones)
-        return True #true that ordinary simulation should continue
+        return shouldContinue 
 
     def __exstinguishFire(self):
         for drone in self.ADrones: 

@@ -72,4 +72,3 @@ if __name__ == "__main__":
     map = emptyMap(10, 10, False)
     map2, A, B, _ = transmissionSucceed[0].performScriptedAction(map, ADrones, BDrones)
     printMap(map2, A, B)
-    
