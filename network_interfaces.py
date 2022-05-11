@@ -17,7 +17,7 @@ class Message:
 class BufferMessage:
     # Types
     # 1 - Sent message, awaiting acknowledgement
-    def __init__(self, ID, type, message, timeRemaining = 10, retries = 0):
+    def __init__(self, ID, type, message, timeRemaining, retries):
         self.ID = ID
         self.type = type
         self.message = message
@@ -31,7 +31,7 @@ class BufferMessage:
         return resend and self.retries >= 1 
 
 class NetworkInterface:
-    def __init__(self,ID,defaultTTL = 5):
+    def __init__(self, ID, defaultTTL = 5, defaultTimeout = 20, defaultRetries = 3):
         self.seq = 0
         self.ID = ID
         self.outGoing : 'deque[Message]'= deque()
@@ -39,10 +39,8 @@ class NetworkInterface:
         self.log  : 'deque[Message]' = deque()
         self.timeouts = {} # seq -> BufferMessage
         self.defaultTTL = defaultTTL
-
-        self.timeoutHandlers = {
-            "1": lambda bm : self.sendMessage(bm.message, bm.retries) # 1 - No ack received. Retry.
-        }
+        self.defaultTimout = defaultTimeout
+        self.defaultRetries = defaultRetries
 
     def tick(self):
         expired = []
@@ -50,7 +48,7 @@ class NetworkInterface:
             bm = self.timeouts[key]
             if bm.decay():
                 #Resend message with lower retry
-                self.timeoutHandlers[bm.type](bm)
+                self.sendMessage(bm.message)
             if bm.retries <= 0:
                 expired.append(bm.ID)
         for e in expired:
@@ -60,16 +58,20 @@ class NetworkInterface:
     #method used by associated drone
     #sends a message to one or other drones
     #destination might be identity of one other drone, gps area, nearest type A drone, etc etc
-    def sendMessage(self, message : 'Message', retries = 2):
-        if retries <= 0:
-            pass
-        
+    def sendMessage(self, message : 'Message', timeout = None, retries = None):
         self.__autoComplete(message)
         self.outGoing.append(message.getTransmit())
 
-        bufferedMessage = BufferMessage(self.seq, "1", message, 50, retries-1)
-        if message.data["mtype"] == "payload":
-            self.timeouts[self.seq] = bufferedMessage
+        if message.data['seq'] in self.timeouts:
+            self.timeouts[message.data['seq']].retries -= 1
+
+        elif message.data["mtype"] == "payload":
+            if timeout == None:
+                timeout = self.defaultTimout
+            if retries == None:
+                retries = self.defaultRetries
+            bufferedMessage = BufferMessage(message.data['seq'], "1", message, timeout, retries)
+            self.timeouts[message.data['seq']] = bufferedMessage
 
     #method used by associated drone
     #returns a message meant for the drone:
@@ -119,7 +121,7 @@ class NetworkInterface:
     def __autoComplete(self,message : 'Message'):
         if not 'source' in message.data:
             message.data['source'] = self.ID
-        if not 'mtype' in message.data:
+        if not 'mtype' in message.data and 'payload' in message.data:
             message.data['mtype'] = 'payload'
         if not 'ttl' in message.data:
             message.data['ttl'] = self.defaultTTL

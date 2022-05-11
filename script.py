@@ -30,13 +30,12 @@ transmissionSucceed = [Script(succeed1)]
 def dropped1(map, a, b):
     message = Message()
     message.data = {
-        "source" : a[0].networkInterface.ID,
         "destination" : b[0].networkInterface.ID,
         "mtype": "payload",
         "ttl" : 5,
         "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []})
     }
-    a[0].networkInterface.sendMessage(message, retries = 0)
+    a[0].networkInterface.sendMessage(message,retries = 0)
     a[0].networkInterface.getOutgoing()
     return map, a, b, True
 
