@@ -63,13 +63,12 @@ class ADrone(Drone):
         frontier = deque()
         considered.add((floor(self.xpos),floor(self.ypos)))
         frontier.append((floor(self.xpos),floor(self.ypos)))
-
         while frontier:
             x, y = frontier.popleft()
             if isOnFire(self.map[x][y]):
                 break
 
-            for xd, yd in [(-1,0),(1,0),(0,-1),(0,1)]:
+            for xd, yd in [(-1,0),(0,-1),(1,0),(0,1)]:
                 x1, y1 = (x + xd, y + yd)
                 if (not (x1, y1) in considered and
                         x1 >= 0 and x1 < self.map.shape[0] and 
@@ -78,7 +77,6 @@ class ADrone(Drone):
                     frontier.append((x1,y1))
         else:
             return Action()
-
         return Action(speed = 1, direction = calculateDirection(self.getPosition(),(x,y)))
 
 class BDrone(Drone):

@@ -19,7 +19,6 @@ def emptyMap(xsize,ysize,flammable = False):
 #2nd bit - on if area on fire
 #... Something that obstructs view? Obstructs communication?
 
-#speed must be at least sqrt(2), otherwise you could just end up in same tile
 
 def isFlammable(tile):
     return (tile & 1)
@@ -40,15 +39,14 @@ def unsetFire(tmap,x,y):
 def printMap(tilemap,adrones,bdrones): 
     print(np.flipud(np.transpose(tilemap)))
     print("--------DRONES---------")
+    dronemap = np.full(tilemap.shape,"0")
     for x in range(tilemap.shape[0]):
         for y in range(tilemap.shape[1]):
             if any([floor(d.xpos) == x and floor(d.ypos) == y for d in adrones]):
-                print("A", end="")
+                dronemap[x][y] = "A"
             elif any([floor(d.xpos) == x and floor(d.ypos) == y for d in bdrones]):
-                print("B", end="")
-            else:
-                print("0", end="")
-        print("\n", end="")
+                dronemap[x][y] = "B"
+    print(np.flipud(np.transpose(dronemap)))
     print("--------ADRONES--------")
     for drone in adrones:
         print("x: " + str(drone.xpos) + ", y: " + str(drone.ypos))
