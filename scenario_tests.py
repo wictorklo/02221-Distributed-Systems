@@ -59,12 +59,12 @@ class TestMessageDelivered(ut.TestCase):
         self.assertTrue(len(sim.ADrones[0].networkInterface.log) == 1)
         self.assertTrue("ack" in sim.ADrones[0].networkInterface.outGoing[0])
         # Still awaiting ack
-        self.assertTrue(1 in sim.BDrones[0].networkInterface.timeouts.keys()) 
+        self.assertTrue(0 in sim.BDrones[0].networkInterface.timeouts.keys()) 
         sim.performTurn()
         # Ack received, deleting message.
-        self.assertTrue(1 not in sim.BDrones[0].networkInterface.timeouts.keys())
+        self.assertTrue(0 not in sim.BDrones[0].networkInterface.timeouts.keys())
 
-class TestNoDuplicates(ut.TestCase):
+class TestChallenges(ut.TestCase):
     def test_no_duplicate_diamond(self):
         script = EmptyScript()
         map = emptyMap(100,100)
@@ -75,7 +75,7 @@ class TestNoDuplicates(ut.TestCase):
             ADrone(NetworkInterface(4),map, 0, 6)]
         sim = Simulator(map,script,adrones,[],transmissionsPerTurn=1,transmissionDistance=4)
 
-        message = Message()
+        message = PayloadFloodMessage()
         message.data = {
             "destination" : 4,
             "payload" : json.dumps({"type":"None"})

@@ -1,34 +1,13 @@
 import json
 from math import floor
 from network_interfaces import *
-from environment import emptyMap, isOnFire
+from environment import *
 import copy
 import math
 import random as rnd
 
 from util import calculateDirection
 
-class Action:
-    def __init__(self, speed = 0, direction = 0) -> None:
-        self.speed = speed
-        self.direction = direction
-
-class Observation:
-    def __init__(self,observationPayload = None):
-        if observationPayload:
-            self.loadObservationPayload(observationPayload)
-        else:
-            self.tiles = []
-            self.drones = []
-
-    def loadObservationPayload(self,observationPayload):
-        data = json.loads(observationPayload)
-        self.tiles = data["tiles"]
-        self.drones = data["drones"]
-
-    def getObservationPayload(self):
-        observation = {"type" : "observation", "tiles" : self.tiles, "drones" : self.drones}
-        return json.dumps(observation)
 
 class Drone:
     def __init__(self, networkInterface : 'NetworkInterface', initialMap, xpos = 0, ypos = 0):

@@ -1,6 +1,6 @@
 from pyparsing import nullDebugAction
 from drones import ADrone, BDrone
-from network_interfaces import NetworkInterface, Message
+from network_interfaces import NetworkInterface, Message, PayloadFloodMessage
 import json
 
 
@@ -13,25 +13,25 @@ class Script:
     def performScriptedAction(map, ADrones, BDrones):
         pass
 
-def succeed1(map, a, b):
-    message = Message()
+def succeed1(map, a, b : 'list[BDrone]'):
+    message = PayloadFloodMessage()
     message.data = {
         "source" : b[0].networkInterface.ID,
         "destination" : a[0].networkInterface.ID,
-        "mtype": "payload",
+        "type": "payload",
         "ttl" : 5,
         "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []})
     }
-    b[0].networkInterface.sendMessage(message)
+    b[0].networkInterface.sendMessage(message,timeout=10,retries=2)
     return map, a, b, True
 
 transmissionSucceed = [Script(succeed1)]
 
 def dropped1(map, a, b):
-    message = Message()
+    message = PayloadFloodMessage()
     message.data = {
         "destination" : b[0].networkInterface.ID,
-        "mtype": "payload",
+        "type": "payload",
         "ttl" : 5,
         "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []})
     }
@@ -40,11 +40,11 @@ def dropped1(map, a, b):
     return map, a, b, True
 
 def retry(map, a, b):
-    message = Message()
+    message = PayloadFloodMessage()
     message.data = {
         "source" : a[0].networkInterface.ID,
         "destination" : b[0].networkInterface.ID,
-        "mtype": "payload",
+        "type": "payload",
         "ttl" : 5,
         "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []}),
         "seq" : 1

@@ -88,7 +88,7 @@ class TestSimulator(ut.TestCase):
         drone2.think = lambda : None #turn off mechanism that consumes messages in drone2
         sim = Simulator(tmap,script,[drone1,drone2],[])
 
-        message = Message()
+        message = PayloadFloodMessage()
         message.data = {
             "destination" : 2,
             "payload" : "hello"
@@ -135,7 +135,7 @@ class TestSimulator(ut.TestCase):
         observation.tiles.append((3,1,0))
         observation.tiles.append((3,0,1))
         observation.tiles.append((3,1,1))
-        message = Message()
+        message = PayloadFloodMessage()
         message.data = {
             'destination' : 1,
             'payload' : observation.getObservationPayload()
@@ -170,7 +170,7 @@ class TestNetworkInterface(ut.TestCase):
             "source" : 0,
             "destination" : 1,
             "ttl" : 2,
-            "mtype" : "payload",
+            "type" : "payload",
             "seq" : 0,
             "payload" : "hello"
             }))
@@ -178,14 +178,14 @@ class TestNetworkInterface(ut.TestCase):
 
     def test_bounce_message(self):
         ni1 = NetworkInterface(1)
-        message = Message()
+        message = PayloadFloodMessage()
         message.data = {
             "source" : 0,
             "destination" : 2,
             "ttl" : 2,
-            "mtype" : "payload",
+            "type" : "payload",
             "seq" : 1,
             "payload" : "hello"}
         ni1.receiveMessage(message.getTransmit())
         message.data["ttl"] -= 1
-        self.assertEqual(Message(ni1.getOutgoing()).data,message.data)
+        self.assertEqual(PayloadFloodMessage(ni1.getOutgoing()).data,message.data)

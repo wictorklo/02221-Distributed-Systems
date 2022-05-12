@@ -14,10 +14,29 @@ class Message:
     def getTransmit(self):
         return json.dumps(self.data)
 
+class FloodMessage(Message):
+    def autoComplete(self,DroneID,ttl,seq):
+        if not 'source' in self.data:
+            self.data['source'] = DroneID
+        if not 'ttl' in self.data:
+            self.data['ttl'] = ttl
+        if not 'seq' in self.data:
+            self.data['seq'] = seq
+
+class PayloadFloodMessage(FloodMessage):
+    def autoComplete(self,DroneID,ttl,seq):
+        super().autoComplete(DroneID,ttl,seq)
+        self.data['type'] = 'payload'
+
+class AckFloodMessage(FloodMessage):
+    def autoComplete(self,DroneID,ttl,seq):
+        super().autoComplete(DroneID,ttl,seq)
+        self.data['type'] = 'ack'
+
 class BufferMessage:
     # Types
     # 1 - Sent message, awaiting acknowledgement
-    def __init__(self, ID, type, message, timeRemaining, retries):
+    def __init__(self, ID, type, message : 'Message', timeRemaining, retries):
         self.ID = ID
         self.type = type
         self.message = message
@@ -37,7 +56,7 @@ class NetworkInterface:
         self.outGoing : 'deque[Message]'= deque()
         self.inComing = deque()
         self.log  : 'deque[Message]' = deque()
-        self.timeouts = {} # seq -> BufferMessage
+        self.timeouts : 'dict[int,BufferMessage]' = {} # seq -> BufferMessage
         self.defaultTTL = defaultTTL
         self.defaultTimout = defaultTimeout
         self.defaultRetries = defaultRetries
@@ -58,14 +77,17 @@ class NetworkInterface:
     #method used by associated drone
     #sends a message to one or other drones
     #destination might be identity of one other drone, gps area, nearest type A drone, etc etc
-    def sendMessage(self, message : 'Message', timeout = None, retries = None):
-        self.__autoComplete(message)
+    def sendMessage(self, message : 'FloodMessage', timeout = None, retries = None):
+        message.autoComplete(self.ID,self.defaultTTL,self.seq)
+        if message.data['seq'] == self.seq:
+            self.seq += 1
+
         self.outGoing.append(message.getTransmit())
 
         if message.data['seq'] in self.timeouts:
             self.timeouts[message.data['seq']].retries -= 1
 
-        elif message.data["mtype"] == "payload":
+        elif message.data["type"] == "payload":
             if timeout == None:
                 timeout = self.defaultTimout
             if retries == None:
@@ -87,15 +109,17 @@ class NetworkInterface:
     def receiveMessage(self,transmit):
         message = Message(transmit)
         if message.data["destination"] == self.ID:
-            if message.data["mtype"] == "payload" and not any(l.data["seq"] == message.data["seq"] and l.data["source"] == message.data["source"] for l in self.log):
-                self.log.append(message)
-                self.inComing.append(message.data["payload"])
+            if message.data["type"] == "payload":
                 self.__sendAck(message)
-            elif message.data["mtype"] == "ack":
+                if (not any(l.data["seq"] == message.data["seq"] and l.data["source"] == message.data["source"] for l in self.log)):
+                    self.log.append(message)
+                    self.inComing.append(message.data["payload"])
+            elif message.data["type"] == "ack":
                 if message.data["seq"] in self.timeouts:
                     del self.timeouts[message.data["seq"]]
 
-        elif message.data["ttl"] > 0: #bounce on if meant to someone else and not expired
+        elif "ttl" in message.data and message.data["ttl"] > 0: #bounce on if meant to someone else and not expired
+            message = FloodMessage(transmit) #reload as flood message
             message.data["ttl"] -= 1
             self.sendMessage(message)
 
@@ -107,24 +131,10 @@ class NetworkInterface:
         else:
             return None
 
-    def __sendAck(self,message):
-        ack = Message()
+    def __sendAck(self,message : 'Message'):
+        ack = AckFloodMessage()
         ack.data = {
-            "source": self.ID,
             "destination": message.data["source"],
-            "mtype": "ack",
-            "ttl": self.defaultTTL,
-            "seq": message.data["seq"]
+            "seq" : message.data["seq"]
             }
         self.sendMessage(ack)
-
-    def __autoComplete(self,message : 'Message'):
-        if not 'source' in message.data:
-            message.data['source'] = self.ID
-        if not 'mtype' in message.data and 'payload' in message.data:
-            message.data['mtype'] = 'payload'
-        if not 'ttl' in message.data:
-            message.data['ttl'] = self.defaultTTL
-        if not 'seq' in message.data:
-            self.seq += 1
-            message.data['seq'] = self.seq

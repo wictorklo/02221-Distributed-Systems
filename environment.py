@@ -1,5 +1,6 @@
 import numpy as np
 from math import floor
+import json
 
 tiletype = np.dtype("u1")
 
@@ -54,4 +55,26 @@ def printMap(tilemap,adrones,bdrones):
     print("--------BDRONES--------")
     for drone in bdrones:
         print("x: " + str(drone.xpos) + ", y: " + str(drone.ypos))
-    
+
+
+class Action:
+    def __init__(self, speed = 0, direction = 0) -> None:
+        self.speed = speed
+        self.direction = direction
+
+class Observation:
+    def __init__(self,observationPayload = None):
+        if observationPayload:
+            self.loadObservationPayload(observationPayload)
+        else:
+            self.tiles = []
+            self.drones = []
+
+    def loadObservationPayload(self,observationPayload):
+        data = json.loads(observationPayload)
+        self.tiles = data["tiles"]
+        self.drones = data["drones"]
+
+    def getObservationPayload(self):
+        observation = {"type" : "observation", "tiles" : self.tiles, "drones" : self.drones}
+        return json.dumps(observation)
