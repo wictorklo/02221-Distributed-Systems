@@ -85,3 +85,21 @@ class TestChallenges(ut.TestCase):
         sim.performTurn()
         sim.performTurn()
         self.assertEqual(len(adrones[3].networkInterface.log),1)
+
+class TestRouting(ut.TestCase):
+    def test_ping_neighbours(self):
+        script = EmptyScript()
+        map = emptyMap(10, 10)
+        adrones = [
+            ADrone(NetworkInterface(1),map, 0, 0),
+            ADrone(NetworkInterface(2),map, 0, 3),
+            ADrone(NetworkInterface(3),map, 0, 3.5),
+            ADrone(NetworkInterface(4),map, 0, 6)
+        ]
+        sim = Simulator(map, script, adrones, [], transmissionsPerTurn=10, transmissionDistance=5)
+
+        message = PingMessage()
+        adrones[0].networkInterface.sendMessage(message)
+        sim.performTurn()
+        assert(len(adrones[0].networkInterface.neighbours) == 2)
+
