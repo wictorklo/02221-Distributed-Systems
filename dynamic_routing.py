@@ -98,14 +98,16 @@ class DynamicRoutingNI:
 
     def __correctRouting(self):
         self.clock += 1
-        self.singleStepNI.ping()
-        self.timeouts[self.seq] = self.defaultPingTimeout
-        self.timeoutHandlers[self.seq] = (lambda : self.__correctionTimeout(self.seq))
-        self.seq += 1
+        if not "correction" in self.timeouts:
+            self.singleStepNI.ping()
+            self.timeouts["correction"] = self.defaultPingTimeout
+            self.timeoutHandlers["correction"] = self.__correctionTimeout
 
-    def __correctionTimeout(self,seq):
-        del self.timeouts[seq]
-        del self.timeoutHandlers[seq]
+    def __correctionTimeout(self):
+        self.clock += 1
+        del self.timeouts["correction"]
+        del self.timeoutHandlers["correction"]
+        self.lastCorrection = self.clock
 
         if self.routingTable[self.ID] != self.singleStepNI.neighbours:
             #correct neighbours
@@ -129,3 +131,13 @@ class DynamicRoutingNI:
                 performCorrection.autoComplete()
                 self.singleStepNI.sendMessage(performCorrection)
 
+#TODO: origin recieves payload
+#router successfully routes
+#expand routing tables with drone type and coordinates + timestamps
+#requirements for automatic ping (unexpected neighbour)
+#requirements for automatic general info table correction
+#implement broadcast
+#recieve routing info broadcast
+#recieve order to ping message
+#tests
+#cooperation between single step and dynamic routing 
