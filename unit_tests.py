@@ -16,10 +16,10 @@ class TestUil(ut.TestCase):
         self.assertAlmostEqual(x1,1)
         self.assertAlmostEqual(y1,2)
         x1,y1 = movePosition(1,3,1,math.pi / 2)
-        self.assertAlmostEqual(x1,2)
+        self.assertAlmostEqual(x1,0)
         self.assertAlmostEqual(y1,3)
         x1,y1 = movePosition(1,3,1,3 * math.pi / 2)
-        self.assertAlmostEqual(x1,0)
+        self.assertAlmostEqual(x1,2)
         self.assertAlmostEqual(y1,3)
 
 class TestSimulator(ut.TestCase):
@@ -36,7 +36,7 @@ class TestSimulator(ut.TestCase):
         tmap = emptyMap(10,10)
         ni1 = NetworkInterface(0)
         drone1 = ADrone(ni1,tmap,xpos = 0,ypos = 0)
-        drone1.getAction = lambda : Action(1,math.pi / 4)
+        drone1.getAction = lambda : Action(1,7 * math.pi / 4)
 
         sim = Simulator(tmap,script,[drone1],[])
 
