@@ -7,7 +7,7 @@ from script import *
 from util import *
 import math
 
-class TestUil(ut.TestCase):
+class TestUtil(ut.TestCase):
     def test_move_position(self):
         x1,y1 = movePosition(1,3,1,0)
         self.assertAlmostEqual(x1,1)
@@ -21,6 +21,23 @@ class TestUil(ut.TestCase):
         x1,y1 = movePosition(1,3,1,3 * math.pi / 2)
         self.assertAlmostEqual(x1,2)
         self.assertAlmostEqual(y1,3)
+    
+    def test_path(self):
+        graph = {
+            1: [2, 3, 4],
+            2: [1, 4, 5],
+            3: [1, 7],
+            4: [1, 2, 5, 6],
+            5: [2, 4, 8],
+            6: [4],
+            7: [3, 8],
+            8: [5, 7]
+        }
+        startID = 1
+        endID = 8
+        assert(route(startID, endID, graph) == [1, 2, 5, 8])
+        assert(route(startID, 9, graph) == None)
+        assert(route(1, 1, graph) == [])
 
 class TestSimulator(ut.TestCase):
     def test_inialize_and_perform_turn(self):

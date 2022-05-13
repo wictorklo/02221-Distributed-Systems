@@ -98,8 +98,7 @@ class TestRouting(ut.TestCase):
         ]
         sim = Simulator(map, script, adrones, [], transmissionsPerTurn=10, transmissionDistance=5)
 
-        message = PingMessage()
-        adrones[0].networkInterface.sendMessage(message)
+        adrones[0].networkInterface.ping()
         sim.performTurn()
         assert(len(adrones[0].networkInterface.neighbours) == 2)
 
