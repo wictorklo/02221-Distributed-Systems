@@ -97,7 +97,7 @@ class NetworkInterface:
     #destination might be identity of one other drone, gps area, nearest type A drone, etc etc
     def sendMessage(self, message : 'FloodMessage', timeout = None, retries = None):
         message.autoComplete(self.ID,self.defaultTTL,self.seq)
-        if message.data['seq'] == self.seq:
+        if message.data['seq'] == self.seq and message.data['source'] == self.ID:
             self.seq += 1
 
         self.outGoing.append(message.getTransmit())
