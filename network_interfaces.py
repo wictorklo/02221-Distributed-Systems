@@ -113,14 +113,17 @@ class NetworkInterface:
             bufferedMessage = BufferMessage(message.data['seq'], "1", message, timeout, retries)
             self.timeouts[message.data['seq']] = bufferedMessage
         
-        elif message.data["type"] == "ping":
-            self.neighbours = set()
-            if timeout == None:
-                timeout = self.defaultTimeout
-            if retries == None:
-                retries = self.defaultRetries
-            bufferedMessage = BufferMessage(message.data['seq'], "2", message, timeout, retries)
-            self.timeouts[message.data['seq']] = bufferedMessage
+    def ping(self):
+        self.neighbours = set()
+        message = PingMessage()
+        message.autoComplete(self.ID, 1, self.seq)
+        self.seq += 1
+        timeout = self.defaultTimeout
+        retries = self.defaultRetries
+        bufferedMessage = BufferMessage(message.data['seq'], "2", message, timeout, retries)
+        self.timeouts[message.data['seq']] = bufferedMessage
+        self.outGoing.append(message.getTransmit())
+
 
     #method used by associated drone
     #returns a message meant for the drone:
