@@ -1,4 +1,4 @@
-from network_interfaces import Message,FloodMessage,AckFloodMessage,PayloadFloodMessage
+from network_interfaces import Message,FloodMessage,AckFloodMessage,PayloadFloodMessage,SingleStepMessage
 
 class DRMessage(Message):
     def autoComplete(self,DroneID,seq):
@@ -12,24 +12,38 @@ class PayloadDRMessage(DRMessage):
         super().autoComplete(DroneID,seq)
         self.data['type'] = 'payload'
 
+class CorrectionDRMessage(DRMessage):
+    def autoComplete(self, DroneID, seq):
+        super().autoComplete(DroneID, seq)
+        self.data['type'] = 'correction'
+
+class PerformCorrectionDRMessage(DRMessage):
+    def autoComplete(self, DroneID, seq):
+        super().autoComplete(DroneID, seq)
+        self.data['type'] = 'performCorrection'
+
 class DynamicRoutingNI:
     def __init__(self,
             ID,singleStepNI,routingTable,
             defaultTimeoutOrigin = 100, defaultTimeoutRouting = 20,
-            defaultRetriesOrigin = 5, defaultRetriesRouting = 3):
+            defaultRetriesOrigin = 5, defaultRetriesRouting = 3,
+            defaultPingTimeout = 6):
         self.ID = ID
         self.singleStepNI = singleStepNI
-        self.originTimeouts = {}
-        self.routeTimeouts = {}
-        self.originTimeoutHandlers = {}
-        self.routeTimeoutHandlers = {}
-        self.originRetries = {}
+        self.timeouts = {}
+        self.timeoutHandlers = {}
+        self.retries = {}
+        self.timeoutStarts = {}
         self.routingTable = routingTable
         self.defaultTimeoutOrigin = defaultTimeoutOrigin
         self.defaultTimeoutRouting = defaultTimeoutRouting
         self.defaultRetriesOrigin = defaultRetriesOrigin
         self.defaultRetriesRouting = defaultRetriesRouting
+        self.defaultPingTimeout = defaultPingTimeout
         self.seq = 1
+        self.clock = 0
+        self.lastCorrection = self.clock
+
 
     #just used in first step
     def sendPayloadMessage(self,message : 'Message'):
@@ -39,25 +53,79 @@ class DynamicRoutingNI:
         seq = plmessage.data['seq']
         if seq == self.seq:
             self.seq += 1
-        if not seq in self.originTimeouts[plmessage]:
-            self.originTimeouts[seq] = self.defaultTimeoutOrigin
-            self.originTimeoutHandlers[seq] = (lambda : self.sendPayloadMessage(plmessage))
-        if not plmessage.data['seq'] in self.originRetries:
-            self.originRetries[plmessage.data['seq']] = self.defaultRetriesOrigin
-        if self.originRetries[plmessage.data['seq']] >= 1:
-            self.__sendPayloadMessage(plmessage)
-            self.originRetries[plmessage.data['seq']] -= 1
-        else:
-            del self.originTimeouts[seq]
-            del self.originTimeoutHandlers[seq]
-            del self.originRetries[seq]
+        if not seq in self.timeouts:
+            self.timeouts[seq] = self.defaultTimeoutOrigin
+            self.timeoutHandlers[seq] = (lambda : self.sendPayloadMessage(plmessage))
+        if not seq in self.retries:
+            self.retries[seq] = self.defaultRetriesOrigin
+        if self.retries[seq] <= 0:
+            del self.timeouts[seq]
+            del self.timeoutHandlers[seq]
+            del self.retries[seq]
+            return
 
-    #used in both original and intermediate steps
+        self.retries[seq] -= 1
+        self.__sendPayloadMessage(plmessage)
+
+    #used in intermediate steps
+    #we assume message contains necessary info
     def __sendPayloadMessage(self,message : 'Message'):
-        nextStepID = self.__findPath(message.data["destination"])
+        self.clock += 1
+        seq = (message.data["source"],message.data["seq"])
+        if seq in self.timeouts and self.timeoutStarts[seq] > self.lastCorrection:
+            self.__correctRouting()
+            self.timeouts[seq] = self.defaultTimeoutRouting
+            return
+        if not seq in self.timeouts:
+            self.timeouts[seq] = self.defaultTimeoutRouting
+            self.timeoutHandlers[seq] = (lambda : self.__sendPayloadMessage(message))
+        if not seq in self.retries:
+            self.retries[seq] = self.defaultRetriesRouting
+        if self.retries[seq] <= 0:
+            del self.timeouts[seq]
+            del self.timeoutHandlers[seq]
+            del self.retries[seq]
+            del self.timeoutStarts[seq]
+            return
+        
+        self.retries[seq] -= 1
+        nextStepID = self.__findPath(message.data["destination"])[0]
         ssMessage = SingleStepMessage()
-        ssMessage.data["payload"] = message
+        ssMessage.data["payload"] = message.getTransmit()
         ssMessage.data["destination"] = nextStepID
-        successful = self.singleStepNI.sendMessage(ssMessage)
-        if not successful:
-            pass
+        self.singleStepNI.sendMessage(ssMessage)
+
+
+    def __correctRouting(self):
+        self.clock += 1
+        self.singleStepNI.ping()
+        self.timeouts[self.seq] = self.defaultPingTimeout
+        self.timeoutHandlers[self.seq] = (lambda : self.__correctionTimeout(self.seq))
+        self.seq += 1
+
+    def __correctionTimeout(self,seq):
+        del self.timeouts[seq]
+        del self.timeoutHandlers[seq]
+
+        if self.routingTable[self.ID] != self.singleStepNI.neighbours:
+            #correct neighbours
+            self.routingTable[self.ID] = self.singleStepNI.neighbours
+
+            #broadcast new neighbours
+            correction = CorrectionDRMessage()
+            correction.data["neighbours"] = self.routingTable[self.ID]
+            correction.autoComplete(self.ID,self.seq)
+            self.seq += 1
+
+            bcMessage = BroadcastMessage()
+            bcMessage.data["payload"] = correction.getTransmit()
+
+            self.singleStepNI.broadcast(bcMessage)
+
+            #tell neighbours to correct
+            for ID in self.routingTable[self.ID]:
+                performCorrection = PerformCorrectionDRMessage()
+                performCorrection.data["destination"] = ID
+                performCorrection.autoComplete()
+                self.singleStepNI.sendMessage(performCorrection)
+
