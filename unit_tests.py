@@ -39,6 +39,12 @@ class TestUtil(ut.TestCase):
         assert(route(startID, 9, graph) == None)
         assert(route(1, 1, graph) == [])
 
+class MockSingleStepNI:
+    pass
+
+class MockDynamicRoutingNI:
+    pass
+
 class TestSimulator(ut.TestCase):
     def test_inialize_and_perform_turn(self):
         script = EmptyScript()

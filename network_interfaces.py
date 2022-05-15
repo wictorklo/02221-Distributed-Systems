@@ -1,78 +1,15 @@
 from collections import deque
 import json
-
-class Message:
-    def __init__(self,transmit = None):
-        if transmit:
-            self.loadTransmit(transmit)
-        else:
-            self.data = {}
-
-    def loadTransmit(self,transmit):
-        self.data = json.loads(transmit)
-
-    def getTransmit(self):
-        return json.dumps(self.data)
-
-class FloodMessage(Message):
-    def autoComplete(self,DroneID,ttl,seq):
-        if not 'source' in self.data:
-            self.data['source'] = DroneID
-        if not 'ttl' in self.data:
-            self.data['ttl'] = ttl
-        if not 'seq' in self.data:
-            self.data['seq'] = seq
-
-class PayloadFloodMessage(FloodMessage):
-    def autoComplete(self,DroneID,ttl,seq):
-        super().autoComplete(DroneID,ttl,seq)
-        self.data['type'] = 'payload'
-
-class AckFloodMessage(FloodMessage):
-    def autoComplete(self,DroneID,ttl,seq):
-        super().autoComplete(DroneID,ttl,seq)
-        self.data['type'] = 'ack'
-
-class SingleStepMessage(FloodMessage):
-    def autoComplete(self,DroneID,ttl,seq):
-        super().autoComplete(DroneID, 1, seq)
-
-class PingMessage(SingleStepMessage):
-    def autoComplete(self,DroneID,ttl,seq):
-        super().autoComplete(DroneID, ttl, seq)
-        self.data['type'] = 'ping'
-
-class AckPingMessage(SingleStepMessage):
-    def autoComplete(self,DroneID,ttl,seq):
-        super().autoComplete(DroneID, ttl, seq)
-        self.data['type'] = 'ack'
-
-
-class BufferMessage:
-    # Types
-    # 1 - Sent message, awaiting acknowledgement
-    # 2 - Sent ping, awaiting response
-    def __init__(self, ID, type, message : 'Message', timeRemaining, retries):
-        self.ID = ID
-        self.type = type
-        self.message = message
-        self.message.data["seq"] = self.ID
-        self.timeRemaining = timeRemaining
-        self.retries = retries
-    
-    def decay(self):
-        self.timeRemaining -= 1
-        resend = self.timeRemaining <= 0
-        return resend and self.retries >= 1 
+from messages import *
 
 class NetworkInterface:
-    def __init__(self, ID, defaultTTL = 5, defaultTimeout = 20, defaultRetries = 3):
+    def __init__(self, ID : 'str', defaultTTL = 5, defaultTimeout = 20, defaultRetries = 3):
         self.seq = 0
         self.ID = ID
         self.outGoing : 'deque[Message]'= deque()
         self.inComing = deque()
         self.log  : 'deque[Message]' = deque()
-        self.timeouts : 'dict[int,BufferMessage]' = {} # seq -> BufferMessage
+        self.timeouts = {} # seq -> BufferMessage
         self.defaultTTL = defaultTTL
         self.defaultTimeout = defaultTimeout
         self.defaultRetries = defaultRetries

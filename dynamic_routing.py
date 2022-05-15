@@ -1,30 +1,10 @@
-from network_interfaces import Message,FloodMessage,AckFloodMessage,PayloadFloodMessage,SingleStepMessage
-
-class DRMessage(Message):
-    def autoComplete(self,DroneID,seq):
-        if not 'source' in self.data:
-            self.data['source'] = DroneID
-        if not 'seq' in self.data:
-            self.data['seq'] = seq
-
-class PayloadDRMessage(DRMessage):
-    def autoComplete(self,DroneID,seq):
-        super().autoComplete(DroneID,seq)
-        self.data['type'] = 'payload'
-
-class CorrectionDRMessage(DRMessage):
-    def autoComplete(self, DroneID, seq):
-        super().autoComplete(DroneID, seq)
-        self.data['type'] = 'correction'
-
-class PerformCorrectionDRMessage(DRMessage):
-    def autoComplete(self, DroneID, seq):
-        super().autoComplete(DroneID, seq)
-        self.data['type'] = 'performCorrection'
+from single_step import SingleStepNI
+from messages import *
+from collections import deque
 
 class DynamicRoutingNI:
     def __init__(self,
-            ID,singleStepNI,routingTable,
+            ID : 'str', singleStepNI : 'SingleStepNI', routingTable,
             defaultTimeoutOrigin = 100, defaultTimeoutRouting = 20,
             defaultRetriesOrigin = 5, defaultRetriesRouting = 3,
             defaultPingTimeout = 6):
@@ -34,6 +14,8 @@ class DynamicRoutingNI:
         self.timeoutHandlers = {}
         self.retries = {}
         self.timeoutStarts = {}
+        self.payloadLog = set()
+        self.incoming = deque()
         self.routingTable = routingTable
         self.defaultTimeoutOrigin = defaultTimeoutOrigin
         self.defaultTimeoutRouting = defaultTimeoutRouting
@@ -42,7 +24,7 @@ class DynamicRoutingNI:
         self.defaultPingTimeout = defaultPingTimeout
         self.seq = 1
         self.clock = 0
-        self.lastCorrection = self.clock
+        self.lastCorrections = {self.ID : self.clock}
 
 
     #just used in first step
@@ -64,15 +46,38 @@ class DynamicRoutingNI:
             del self.retries[seq]
             return
 
-        self.retries[seq] -= 1
         self.__sendPayloadMessage(plmessage)
+
+    def receiveMessage(self, message : 'DRMessage'):
+        self.clock += 1
+        if message.data['destination'] != self.ID:
+            self.__bounceMessage(message)
+        if message.data['type'] == 'payload':
+            self.__receivePayloadMessage(message)
+        if message.data['type'] == 'ack':
+            self.__receiveAckMessage(message)
+        if message.data['type'] == 'correction':
+            self.__recieveCorrection(message)
+        if message.data['type'] == 'performCorrection':
+            self.__correctRouting()
 
     #used in intermediate steps
     #we assume message contains necessary info
-    def __sendPayloadMessage(self,message : 'Message'):
+    def __sendMessage(self,message : 'DRMessage'):
         self.clock += 1
+        message.autoComplete(self.ID,self.seq,self.clock)
+        if message.data["source"] == self.ID and message.data["seq"] == self.seq:
+            self.seq += 1
+        nextStepID = message.data["route"][self.ID]
+        ssMessage = PayloadSSMessage()
+        ssMessage.data["payload"] = message.getTransmit()
+        ssMessage.data["destination"] = nextStepID
+        self.singleStepNI.sendPayloadMessage(ssMessage)
+        return "Success"
+
+    def __sendPayloadMessage(self,message : 'PayloadDRMessage'):
         seq = (message.data["source"],message.data["seq"])
-        if seq in self.timeouts and self.timeoutStarts[seq] > self.lastCorrection:
+        if seq in self.timeouts and self.timeoutStarts[seq] > self.lastCorrections[self.ID]:
             self.__correctRouting()
             self.timeouts[seq] = self.defaultTimeoutRouting
             return
@@ -86,15 +91,60 @@ class DynamicRoutingNI:
             del self.timeoutHandlers[seq]
             del self.retries[seq]
             del self.timeoutStarts[seq]
-            return
+            return "RetriesExhausted"
         
         self.retries[seq] -= 1
-        nextStepID = self.__findPath(message.data["destination"])[0]
-        ssMessage = SingleStepMessage()
-        ssMessage.data["payload"] = message.getTransmit()
-        ssMessage.data["destination"] = nextStepID
-        self.singleStepNI.sendMessage(ssMessage)
+        if self.__findRoute(message):
+            return self.__sendMessage(message)
+        else:
+            return "NoRoute"
 
+
+    def __sendAckMessage(self,ack : 'AckDRMessage'):
+        if self.__findRoute(ack):
+            return self.__sendMessage(ack)
+        else:
+            return "NoRoute"
+
+    def __bounceMessage(self, message : 'DRMessage'):
+        #if bounce is not possible
+        if not message.data["route"][self.ID] in self.routingTable[self.ID]:
+            #send correction back to source
+            correction = CorrectionDRMessage()
+            correction.data["neighbours"] = list(self.routingTable[self.ID])
+            correction.data["destination"] = message.data["source"]
+            self.__sendMessage(correction)
+
+            #find actual path
+            if not self.__findRoute(message):
+                return "NoRoute"
+        return self.__sendMessage(message)
+
+    def __receivePayloadMessage(self, message : 'PayloadDRMessage'):
+        seq = message.data['seq']
+        source = message.data['source']
+        ack = AckDRMessage()
+        ack.data['destination'] = source
+        ack.data['seq'] = seq
+        self.__sendAckMessage(ack)
+        if (seq,source) in self.payloadLog: 
+            return #already received
+        self.payloadLog.add((seq,source))
+        self.incoming.append(message.data['payload'])
+
+    def __receiveAckMessage(self, message : 'AckDRMessage'):
+        seq = message.data['seq']
+        if seq in self.timeouts:
+            del self.timeouts[seq]
+            del self.timeoutHandlers[seq]
+            del self.retries[seq]
+            del self.timeoutStarts[seq]
+
+    def __recieveCorrection(self, message : 'CorrectionDRMessage'):
+        if not message.data["timestamp"] > self.lastCorrections[message.data["source"]]:
+            return #ignore floating corpse
+        self.lastCorrections[message.data["source"]] = message.data["timestamp"]
+        self.routingTable[message.data["source"]] = set(message.data["neighbours"])
 
     def __correctRouting(self):
         self.clock += 1
@@ -107,7 +157,7 @@ class DynamicRoutingNI:
         self.clock += 1
         del self.timeouts["correction"]
         del self.timeoutHandlers["correction"]
-        self.lastCorrection = self.clock
+        self.lastCorrections[self.ID] = self.clock
 
         if self.routingTable[self.ID] != self.singleStepNI.neighbours:
             #correct neighbours
@@ -115,10 +165,12 @@ class DynamicRoutingNI:
 
             #broadcast new neighbours
             correction = CorrectionDRMessage()
-            correction.data["neighbours"] = self.routingTable[self.ID]
-            correction.autoComplete(self.ID,self.seq)
-            self.seq += 1
+            correction.data["neighbours"] = list(self.routingTable[self.ID])
+            correction.data["timestamp"] = self.clock 
+            correction.autoComplete(self.ID,self.seq,self.clock)
 
+            self.clock += 1
+            self.seq += 1
             bcMessage = BroadcastMessage()
             bcMessage.data["payload"] = correction.getTransmit()
 
@@ -128,16 +180,16 @@ class DynamicRoutingNI:
             for ID in self.routingTable[self.ID]:
                 performCorrection = PerformCorrectionDRMessage()
                 performCorrection.data["destination"] = ID
-                performCorrection.autoComplete()
-                self.singleStepNI.sendMessage(performCorrection)
+                performCorrection.autoComplete(self.ID,self.seq,self.clock)
+                self.seq += 1
+                self.clock += 1
+                self.singleStepNI.sendPayloadMessage(performCorrection)
 
-#TODO: origin recieves payload
+#TODO: 
 #router successfully routes
 #expand routing tables with drone type and coordinates + timestamps
 #requirements for automatic ping (unexpected neighbour)
 #requirements for automatic general info table correction
 #implement broadcast
-#recieve routing info broadcast
-#recieve order to ping message
 #tests
 #cooperation between single step and dynamic routing 
