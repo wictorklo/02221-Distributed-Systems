@@ -1,5 +1,5 @@
 from messages import *
-from collections import deque()
+from collections import deque
 
 class SingleStepNI:
     def __init__(self,
@@ -8,12 +8,7 @@ class SingleStepNI:
         self.neighbours = neighbours
         self.sendPrimitive = sendPrimitive
         self.incoming = deque()
-        self.timeouts = {}
-        self.timeoutHandlers = {}
-        self.retries = {}
         self.broadcastLog = set()
-        self.defaultTimeout = defaultTimeout
-        self.defaultRetries = defaultRetries
 
     def sendPayloadMessage(self, message : 'PayloadSSMessage'):
         pass

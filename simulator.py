@@ -2,7 +2,7 @@ from math import floor
 import numpy as np
 import random as rnd
 from drones import *
-from script import *
+from script import Script
 from util import *
 from environment import *
 

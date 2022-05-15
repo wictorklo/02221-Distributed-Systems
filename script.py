@@ -1,6 +1,6 @@
 from pyparsing import nullDebugAction
 from drones import ADrone, BDrone
-from network_interfaces import NetworkInterface, Message, PayloadFloodMessage
+from legacy import NetworkInterface, Message, PayloadFloodMessage
 import json
 
 

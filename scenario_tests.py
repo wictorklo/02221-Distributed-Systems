@@ -87,6 +87,7 @@ class TestChallenges(ut.TestCase):
         self.assertEqual(len(adrones[3].networkInterface.log),1)
 
 class TestRouting(ut.TestCase):
+    @ut.skip("not in legacy interface")
     def test_ping_neighbours(self):
         script = EmptyScript()
         map = emptyMap(10, 10)
