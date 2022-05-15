@@ -1,13 +1,13 @@
 from messages import *
-
+from collections import deque()
 
 class SingleStepNI:
     def __init__(self,
-            ID : 'str', neighbours, sendPrimitive,
-            defaultTimeout = 3, defaultRetries = 5):
+            ID : 'str', neighbours, sendPrimitive):
         self.ID = ID
         self.neighbours = neighbours
         self.sendPrimitive = sendPrimitive
+        self.incoming = deque()
         self.timeouts = {}
         self.timeoutHandlers = {}
         self.retries = {}
@@ -26,3 +26,6 @@ class SingleStepNI:
 
     def receiveMessage(self, message : 'SSMessage'):
         pass
+
+    def __sendMessage(self, message : 'SSMessage'):
+        message.autoComplete(self.ID,)

@@ -22,7 +22,7 @@ def calculateDirection(v1,v2):
     else: #if y is negative, flip the cos that is found by acos
         return (2 * math.pi - rad1)
 
-# Given a dict of (ID -> ID list) return ID list of shortest path from start to end
+# Given a dict of (ID -> ID set) return ID list of shortest path from start to end
 def route(startID, endID, routingTable):
     if startID == endID:
         return []

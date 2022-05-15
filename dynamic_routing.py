@@ -1,6 +1,7 @@
 from single_step import SingleStepNI
 from messages import *
 from collections import deque
+import util
 
 class DynamicRoutingNI:
     def __init__(self,
@@ -28,62 +29,80 @@ class DynamicRoutingNI:
 
 
     #just used in first step
-    def sendPayloadMessage(self,message : 'Message'):
-        plmessage = PayloadDRMessage()
-        plmessage.data = message.data
-        plmessage.autoComplete(self.ID,self.seq)
-        seq = plmessage.data['seq']
+    def sendPayloadMessage(self,message : 'PayloadDRMessage'):
+        message.autoComplete(self.ID,self.seq,self.clock)
+        message.data["timestamp"] = self.clock
+        seq = message.data['seq']
         if seq == self.seq:
             self.seq += 1
+
         if not seq in self.timeouts:
             self.timeouts[seq] = self.defaultTimeoutOrigin
-            self.timeoutHandlers[seq] = (lambda : self.sendPayloadMessage(plmessage))
+            self.timeoutHandlers[seq] = (lambda : self.sendPayloadMessage(message))
+            self.timeoutStarts[seq] = self.clock
         if not seq in self.retries:
             self.retries[seq] = self.defaultRetriesOrigin
         if self.retries[seq] <= 0:
             del self.timeouts[seq]
+            del self.timeoutStarts[seq]
             del self.timeoutHandlers[seq]
             del self.retries[seq]
             return
 
-        self.__sendPayloadMessage(plmessage)
+        self.__sendMessage(message)
 
     def receiveMessage(self, message : 'DRMessage'):
         self.clock += 1
-        if message.data['destination'] != self.ID:
+        #we treat no destination as broadcasts
+        if 'destination' in message.data and message.data['destination'] != self.ID:
             self.__bounceMessage(message)
         if message.data['type'] == 'payload':
             self.__receivePayloadMessage(message)
-        if message.data['type'] == 'ack':
+        if message.data['type'] == 'payloadAck':
+            self.__receivePayloadAckMessage(message)
+        if message.data['type'] == "ack":
             self.__receiveAckMessage(message)
+            return #acks don't expect acks
         if message.data['type'] == 'correction':
-            self.__recieveCorrection(message)
+            self.__receiveCorrection(message)
+            return #correction messages don't expect acks
         if message.data['type'] == 'performCorrection':
             self.__correctRouting()
+            return #performCorrection messages don't expect acks
+        
+        #we misuse the source field to store the source of the message we are acking
+        #this scheme could lead to problems if we are excpecting acks from multiple nodes for the same message
+        destination = self.__prevStep(message)
+        if not destination:
+            return #no previous step on route????
+        ack = AckDRMessage()
+        ack.data["seq"] = message.data["seq"]
+        ack.data["source"] = message.data["source"]
+        ack.data["destination"] = destination
+        ack.autoComplete(self.ID,self.clock)
+        
+        ssMessage = PayloadSSMessage()
+        ssMessage.data["payload"] = ack.getTransmit()
+        ssMessage.data["destination"] = destination
+        self.singleStepNI.sendPayloadMessage(ssMessage)
 
     #used in intermediate steps
     #we assume message contains necessary info
-    def __sendMessage(self,message : 'DRMessage'):
+    def __sendMessage(self,message : 'PayloadDRMessage'):
         self.clock += 1
-        message.autoComplete(self.ID,self.seq,self.clock)
-        if message.data["source"] == self.ID and message.data["seq"] == self.seq:
-            self.seq += 1
-        nextStepID = message.data["route"][self.ID]
-        ssMessage = PayloadSSMessage()
-        ssMessage.data["payload"] = message.getTransmit()
-        ssMessage.data["destination"] = nextStepID
-        self.singleStepNI.sendPayloadMessage(ssMessage)
-        return "Success"
-
-    def __sendPayloadMessage(self,message : 'PayloadDRMessage'):
         seq = (message.data["source"],message.data["seq"])
+
+        #handle timeouts
         if seq in self.timeouts and self.timeoutStarts[seq] > self.lastCorrections[self.ID]:
             self.__correctRouting()
             self.timeouts[seq] = self.defaultTimeoutRouting
-            return
+            return "Correcting"
         if not seq in self.timeouts:
+            self.timeoutStarts[seq] = self.clock
             self.timeouts[seq] = self.defaultTimeoutRouting
-            self.timeoutHandlers[seq] = (lambda : self.__sendPayloadMessage(message))
+            self.timeoutHandlers[seq] = (lambda : self.__sendMessage(message))
+        
+        #handle retries
         if not seq in self.retries:
             self.retries[seq] = self.defaultRetriesRouting
         if self.retries[seq] <= 0:
@@ -92,19 +111,24 @@ class DynamicRoutingNI:
             del self.retries[seq]
             del self.timeoutStarts[seq]
             return "RetriesExhausted"
-        
         self.retries[seq] -= 1
-        if self.__findRoute(message):
-            return self.__sendMessage(message)
-        else:
+
+        #add route if missing
+        if not "route" in message.data and not self.__findRoute(message):
             return "NoRoute"
 
+        #autocomplete
+        message.autoComplete(self.ID,self.seq,self.clock)
+        if message.data["source"] == self.ID and message.data["seq"] == self.seq:
+            self.seq += 1
 
-    def __sendAckMessage(self,ack : 'AckDRMessage'):
-        if self.__findRoute(ack):
-            return self.__sendMessage(ack)
-        else:
-            return "NoRoute"
+        #send through SS layer
+        nextStepID = message.data["route"][self.ID]
+        ssMessage = PayloadSSMessage()
+        ssMessage.data["payload"] = message.getTransmit()
+        ssMessage.data["destination"] = nextStepID
+        self.singleStepNI.sendPayloadMessage(ssMessage)
+        return "Success"
 
     def __bounceMessage(self, message : 'DRMessage'):
         #if bounce is not possible
@@ -126,21 +150,29 @@ class DynamicRoutingNI:
         ack = AckDRMessage()
         ack.data['destination'] = source
         ack.data['seq'] = seq
-        self.__sendAckMessage(ack)
+        self.__sendMessage(ack)
         if (seq,source) in self.payloadLog: 
             return #already received
         self.payloadLog.add((seq,source))
         self.incoming.append(message.data['payload'])
 
-    def __receiveAckMessage(self, message : 'AckDRMessage'):
+    def __receivePayloadAckMessage(self, message : 'PayloadAckDRMessage'):
         seq = message.data['seq']
         if seq in self.timeouts:
             del self.timeouts[seq]
             del self.timeoutHandlers[seq]
             del self.retries[seq]
             del self.timeoutStarts[seq]
+    
+    def __receiveAckMessage(self, message : 'AckDRMessage'):
+        seq = (message.data['source'],message.data['seq'])
+        if seq in self.timeouts:
+            del self.timeouts[seq]
+            del self.timeoutHandlers[seq]
+            del self.retries[seq]
+            del self.timeoutStarts[seq]
 
-    def __recieveCorrection(self, message : 'CorrectionDRMessage'):
+    def __receiveCorrection(self, message : 'CorrectionDRMessage'):
         if not message.data["timestamp"] > self.lastCorrections[message.data["source"]]:
             return #ignore floating corpse
         self.lastCorrections[message.data["source"]] = message.data["timestamp"]
@@ -183,7 +215,25 @@ class DynamicRoutingNI:
                 performCorrection.autoComplete(self.ID,self.seq,self.clock)
                 self.seq += 1
                 self.clock += 1
-                self.singleStepNI.sendPayloadMessage(performCorrection)
+                ssMessage = PayloadSSMessage()
+                ssMessage.data["payload"] = performCorrection.getTransmit()
+                ssMessage.data["destination"] = ID
+                self.singleStepNI.sendPayloadMessage(ssMessage)
+
+    def __findRoute(self, message : 'DRMessage'):
+        route = util.route(self.ID, message.data["destination"], self.routingTable)
+        routeMap = {}
+        for i in range(1,len(route)):
+            routeMap[route[i-1]] = route[i]
+        message.data["route"] = routeMap
+
+    def __prevStep(self, message : 'DRMessage'):
+        route = message.data["route"]
+        for prev in route:
+            nxt = route[prev]
+            if nxt == self.ID:
+                return prev
+        return None
 
 #TODO: 
 #router successfully routes
