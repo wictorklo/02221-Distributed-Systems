@@ -32,7 +32,7 @@ class DynamicRoutingNI:
             self.timeouts[seq] -= 1
             if self.timeouts[seq] <= 0:
                 self.timeoutHandlers[seq]()
-                
+
 
     #just used in first step
     def sendPayloadMessage(self,message : 'PayloadDRMessage'):
@@ -244,10 +244,7 @@ class DynamicRoutingNI:
         return None
 
 #TODO: 
-#router successfully routes
 #expand routing tables with drone type and coordinates + timestamps
 #requirements for automatic ping (unexpected neighbour)
 #requirements for automatic general info table correction
-#implement broadcast
 #tests
-#cooperation between single step and dynamic routing 
