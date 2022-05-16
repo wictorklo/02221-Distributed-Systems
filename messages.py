@@ -28,26 +28,21 @@ class PingSSMessage(SSMessage):
         super().autoComplete(DroneID, seq)
         self.data['type'] = 'ping'
 
-class AckSSMessage(SSMessage):
+class PongSSMessage(SSMessage):
     def autoComplete(self,DroneID,seq):
         super().autoComplete(DroneID, seq)
-        self.data['type'] = 'ack'
+        self.data['type'] = 'pong'
 
 class PayloadSSMessage(SSMessage):
     def autoComplete(self,DroneID,seq):
         super().autoComplete(DroneID, seq)
         self.data['type'] = 'payload'
 
-class BroadcastMessage(Message):
+class BroadcastMessage(SSMessage):
     def autoComplete(self,DroneID,seq):
-        if not 'source' in self.data:
-            self.data['source'] = DroneID
-        if not 'seq' in self.data:
-            self.data['seq'] = seq
-        if not 'protocol' in self.data:
-            self.data['protocol'] = 'Broadcast'
+        super().autoComplete(DroneID, seq)
         if not 'type' in self.data:
-            self.data = 'payload'
+            self.data = 'broadcast'
 
 class DRMessage(Message):
     def autoComplete(self,DroneID,seq,clock):
@@ -71,7 +66,7 @@ class PayloadAckDRMessage(DRMessage):
         self.data['type'] = 'payloadAck'
 
 class AckDRMessage(DRMessage):
-    def autoComplete(self,DroneID,clock):
+    def autoComplete(self,DroneID,_,clock):
         super().autoComplete(DroneID,None,clock)
         self.data['type'] = 'ack'
 

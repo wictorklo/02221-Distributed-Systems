@@ -27,6 +27,12 @@ class DynamicRoutingNI:
         self.clock = 0
         self.lastCorrections = {self.ID : self.clock}
 
+    def tick(self):
+        for seq in self.timeouts:
+            self.timeouts[seq] -= 1
+            if self.timeouts[seq] <= 0:
+                self.timeoutHandlers[seq]()
+                
 
     #just used in first step
     def sendPayloadMessage(self,message : 'PayloadDRMessage'):
@@ -56,17 +62,17 @@ class DynamicRoutingNI:
         #we treat no destination as broadcasts
         if 'destination' in message.data and message.data['destination'] != self.ID:
             self.__bounceMessage(message)
-        if message.data['type'] == 'payload':
+        elif message.data['type'] == 'payload':
             self.__receivePayloadMessage(message)
-        if message.data['type'] == 'payloadAck':
+        elif message.data['type'] == 'payloadAck':
             self.__receivePayloadAckMessage(message)
-        if message.data['type'] == "ack":
+        elif message.data['type'] == "ack":
             self.__receiveAckMessage(message)
             return #acks don't expect acks
-        if message.data['type'] == 'correction':
+        elif message.data['type'] == 'correction':
             self.__receiveCorrection(message)
             return #correction messages don't expect acks
-        if message.data['type'] == 'performCorrection':
+        elif message.data['type'] == 'performCorrection':
             self.__correctRouting()
             return #performCorrection messages don't expect acks
         
@@ -74,12 +80,13 @@ class DynamicRoutingNI:
         #this scheme could lead to problems if we are excpecting acks from multiple nodes for the same message
         destination = self.__prevStep(message)
         if not destination:
-            return #no previous step on route????
+            raise Exception("no previous node")
         ack = AckDRMessage()
         ack.data["seq"] = message.data["seq"]
         ack.data["source"] = message.data["source"]
         ack.data["destination"] = destination
-        ack.autoComplete(self.ID,self.clock)
+        ack.data["ackedType"] = message.data["type"]
+        ack.autoComplete(self.ID,self.seq,self.clock)
         
         ssMessage = PayloadSSMessage()
         ssMessage.data["payload"] = ack.getTransmit()
@@ -90,7 +97,12 @@ class DynamicRoutingNI:
     #we assume message contains necessary info
     def __sendMessage(self,message : 'PayloadDRMessage'):
         self.clock += 1
-        seq = (message.data["source"],message.data["seq"])
+        #autocomplete
+        message.autoComplete(self.ID,self.seq,self.clock)
+        if message.data["source"] == self.ID and message.data["seq"] == self.seq:
+            self.seq += 1
+
+        seq = (message.data["source"],message.data["seq"],message.data["type"])
 
         #handle timeouts
         if seq in self.timeouts and self.timeoutStarts[seq] > self.lastCorrections[self.ID]:
@@ -112,16 +124,9 @@ class DynamicRoutingNI:
             del self.timeoutStarts[seq]
             return "RetriesExhausted"
         self.retries[seq] -= 1
-
         #add route if missing
         if not "route" in message.data and not self.__findRoute(message):
             return "NoRoute"
-
-        #autocomplete
-        message.autoComplete(self.ID,self.seq,self.clock)
-        if message.data["source"] == self.ID and message.data["seq"] == self.seq:
-            self.seq += 1
-
         #send through SS layer
         nextStepID = message.data["route"][self.ID]
         ssMessage = PayloadSSMessage()
@@ -147,7 +152,9 @@ class DynamicRoutingNI:
     def __receivePayloadMessage(self, message : 'PayloadDRMessage'):
         seq = message.data['seq']
         source = message.data['source']
-        ack = AckDRMessage()
+        ack = PayloadAckDRMessage()
+        #we missuse source field for original source to avoid duplicate seqs
+        ack.data['source'] = source
         ack.data['destination'] = source
         ack.data['seq'] = seq
         self.__sendMessage(ack)
@@ -165,7 +172,7 @@ class DynamicRoutingNI:
             del self.timeoutStarts[seq]
     
     def __receiveAckMessage(self, message : 'AckDRMessage'):
-        seq = (message.data['source'],message.data['seq'])
+        seq = (message.data['source'],message.data['seq'],message.data['ackedType'])
         if seq in self.timeouts:
             del self.timeouts[seq]
             del self.timeoutHandlers[seq]
@@ -226,6 +233,7 @@ class DynamicRoutingNI:
         for i in range(1,len(route)):
             routeMap[route[i-1]] = route[i]
         message.data["route"] = routeMap
+        return route
 
     def __prevStep(self, message : 'DRMessage'):
         route = message.data["route"]

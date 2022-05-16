@@ -12,10 +12,10 @@ class NetworkInterface:
             defaultPingTimeout = 6):
         self.seq = 0
         self.ID = ID
-        self.outGoing : 'deque[str]'= deque()
-        self.inComing = deque()
+        self.outgoing : 'deque[str]'= deque()
+        self.incoming = deque()
 
-        sendPrimitive = lambda transmit : self.outGoing.append(transmit)
+        sendPrimitive = lambda transmit : self.outgoing.append(transmit)
         self.singleStepNI = SingleStepNI(
             self.ID, routingTable[self.ID], sendPrimitive
         )
@@ -29,13 +29,20 @@ class NetworkInterface:
         )
         
     def tick(self):
-        pass
+        self.dynamicRoutingNI.tick()
+        while self.dynamicRoutingNI.incoming or self.singleStepNI.incoming:
+            if self.dynamicRoutingNI.incoming:
+                self.incoming.append(self.dynamicRoutingNI.incoming.popleft())
+            if self.singleStepNI.incoming:
+                self.incoming.append(self.singleStepNI.incoming.popleft())
 
     #method used by associated drone
     #sends a message to one or more other drones
-    #destination might be identity of one other drone, or predicate
-    def sendMessage(self, message : 'Message', timeout = None, retries = None):
-        pass
+    def sendMessage(self, message : 'Message'):
+        if not "protocol" in message.data:
+            return "NoProtocol"
+        if message.data["protocol"] == "DynamicRouting":
+            pass
     
     #method used by associated drone
     #returns a message meant for the drone:

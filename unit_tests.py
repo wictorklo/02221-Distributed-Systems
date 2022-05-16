@@ -39,7 +39,7 @@ class TestUtil(ut.TestCase):
         assert(route(1, 1, graph) == [])
 
 class MockNetworkInterface:
-    def __init__(self,ID,r):
+    def __init__(self,ID,routingTable):
         self.ID = ID
         self.ticks = 0
         self.incoming = []
@@ -54,12 +54,26 @@ class MockNetworkInterface:
         return None
 
 class MockSingleStepNI:
-    def __init__(self,ID):
+    def __init__(self,ID,neighbours,sendPrimitive):
         self.ID = ID
+        self.neighbours = neighbours
+        self.sendPayloads = []
+        self.broadcasts = []
+        self.pings = 0
+    
+    def sendPayloadMessage(self,message):
+        self.sendPayloads.append(message)
+
+    def broadcast(self, message : 'BroadcastMessage'):
+        self.broadcasts.append(message)
+
+    def ping(self):
+        self.pings += 1
 
 class MockDynamicRoutingNI:
-    def __init__(self,ID):
+    def __init__(self,ID,singleStepNI,routingTable):
         self.ID = ID
+
 
 class TestSimulator(ut.TestCase):
     def test_inialize_and_perform_turn(self):
@@ -73,7 +87,7 @@ class TestSimulator(ut.TestCase):
     def test_move_corner_to_corner(self):
         script = EmptyScript()
         tmap = emptyMap(10,10)
-        ni1 = MockNetworkInterface(0)
+        ni1 = MockNetworkInterface(0,None)
         drone1 = ADrone(ni1,tmap,xpos = 0,ypos = 0)
         drone1.getAction = lambda : Action(1,7 * math.pi / 4)
 
@@ -105,7 +119,7 @@ class TestSimulator(ut.TestCase):
         script = EmptyScript()
         tmap = emptyMap(10,10,flammable=True)
         setFire(tmap,0,0)
-        ni1 = MockNetworkInterface(0)
+        ni1 = MockNetworkInterface(0,None)
         drone1 = ADrone(ni1,tmap,xpos = 1,ypos = 1)
         sim = Simulator(tmap,script,[drone1],[])
 
@@ -143,7 +157,7 @@ class TestSimulator(ut.TestCase):
     def test_internal_state_change_observation(self):
         script = EmptyScript()
         tmap = emptyMap(10,10,flammable=True)
-        ni1 = MockNetworkInterface(1)
+        ni1 = MockNetworkInterface(1,None)
         drone1 = BDrone(ni1,tmap,xpos = 1,ypos = 1)
         sim = Simulator(tmap,script,[],[drone1])
 
@@ -164,8 +178,8 @@ class TestSimulator(ut.TestCase):
     def test_internal_state_change_message(self):
         script = EmptyScript()
         tmap = emptyMap(50,50,flammable=True)
-        ni1 = NetworkInterface(1)
-        ni2 = NetworkInterface(2)
+        ni1 = NetworkInterface(1,None)
+        ni2 = NetworkInterface(2,None)
         drone1 = BDrone(ni1,tmap,xpos = 49,ypos = 49)
         drone2 = BDrone(ni2,tmap,xpos = 46,ypos = 46)
         sim = Simulator(tmap,script,[],[drone1,drone2])
@@ -196,7 +210,7 @@ class TestSimulator(ut.TestCase):
         tmap = emptyMap(50,50,flammable=True)
         setFire(tmap,0,0)
 
-        ni1 = NetworkInterface(1)
+        ni1 = MockNetworkInterface("1",None)
         drone1 = ADrone(ni1,tmap,xpos = 49,ypos = 49)
 
         self.assertAlmostEqual(drone1.getAction().direction,math.pi * 3 / 4)
@@ -231,3 +245,23 @@ class TestNetworkInterface(ut.TestCase):
         ni1.receiveMessage(message.getTransmit())
         message.data["ttl"] -= 1
         self.assertEqual(PayloadFloodMessage(ni1.getOutgoing()).data,message.data)
+
+class TestDynamicRouting(ut.TestCase):
+    def test_recieves_and_acks_payload_message(self):
+        print("")
+        routingTable = {"1" : set(["2"]), "2" : set(["1"])}
+        singleStepNI = MockSingleStepNI("1",set(),None)
+        dynamicRoutingNI = DynamicRoutingNI("1",singleStepNI,routingTable)
+        payloadMessage = PayloadDRMessage()
+        payloadMessage.data["source"] = "2"
+        payloadMessage.data["destination"] = "1"
+        payloadMessage.data["payload"] = "payload1"
+        payloadMessage.data["type"] = "payload"
+        payloadMessage.data["seq"] = 1
+        payloadMessage.data["timestamp"] = 0
+        payloadMessage.data["route"] = {"2" : "1"}
+        dynamicRoutingNI.receiveMessage(payloadMessage)
+        self.assertIn("payload1",dynamicRoutingNI.incoming)
+
+        self.assertEqual(2,len(singleStepNI.sendPayloads))
+        
