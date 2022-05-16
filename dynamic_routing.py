@@ -98,6 +98,16 @@ class DynamicRoutingNI:
         ssMessage.data["destination"] = destination
         self.singleStepNI.sendPayloadMessage(ssMessage)
 
+    def __multicast(self,message : 'Message',destinations):
+        for destination in destinations:
+            route = util.route(self.ID,destination,self.routingTable)
+            if not route:
+                return "NoRoute"
+            ssMessage = PayloadSSMessage()
+            ssMessage.data["payload"] = message.getTransmit()
+            ssMessage.data["destination"] = route[1]
+            self.singleStepNI.sendPayloadMessage(ssMessage)
+
     #used in intermediate steps
     #we assume message contains necessary info
     def __sendMessage(self,message : 'PayloadDRMessage'):

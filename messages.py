@@ -60,6 +60,9 @@ class PayloadDRMessage(DRMessage):
         super().autoComplete(DroneID,seq,clock)
         self.data['type'] = 'payload'
 
+class PredicastDRMessaage(DRMessage):
+    pass
+
 class PayloadAckDRMessage(DRMessage):
     def autoComplete(self,DroneID,seq,clock):
         super().autoComplete(DroneID,seq,clock)

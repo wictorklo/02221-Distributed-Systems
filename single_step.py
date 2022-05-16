@@ -16,6 +16,7 @@ class SingleStepNI:
         self.__sendMessage(message)
 
     def broadcast(self, message : 'BroadcastMessage'):
+        self.broadcastLog.add((message.data["source"],message.data["seq"]))
         self.__sendMessage(message)
 
     def ping(self):
