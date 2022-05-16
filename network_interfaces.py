@@ -1,5 +1,7 @@
 from collections import deque
 import json
+
+from requests import JSONDecodeError
 from messages import *
 from dynamic_routing import DynamicRoutingNI
 from single_step import SingleStepNI
@@ -32,9 +34,11 @@ class NetworkInterface:
         self.dynamicRoutingNI.tick()
         while self.dynamicRoutingNI.incoming or self.singleStepNI.incoming:
             if self.dynamicRoutingNI.incoming:
-                self.incoming.append(self.dynamicRoutingNI.incoming.popleft())
+                transmit = self.dynamicRoutingNI.incoming.popleft()
+                self.__tryReceiveMessage(transmit)
             if self.singleStepNI.incoming:
-                self.incoming.append(self.singleStepNI.incoming.popleft())
+                transmit = self.singleStepNI.incoming.popleft()
+                self.__tryReceiveMessage(transmit)
 
     #method used by associated drone
     #sends a message to one or more other drones
@@ -42,13 +46,15 @@ class NetworkInterface:
         if not "protocol" in message.data:
             return "NoProtocol"
         if message.data["protocol"] == "DynamicRouting":
-            pass
+            return self.dynamicRoutingNI.sendPayloadMessage(message)
+        elif message.data["protocol"] == "SingleStep":
+            return self.singleStepNI.sendPayloadMessage(message)
     
     #method used by associated drone
     #returns a message meant for the drone:
     def getIncoming(self):
-        if self.inComing:
-            message = self.inComing.popleft()
+        if self.incoming:
+            message = self.incoming.popleft()
             return message
         else:
             return None
@@ -56,12 +62,30 @@ class NetworkInterface:
     #method used by simulator 
     #gives interface message from network
     def receiveMessage(self,transmit):
-        pass
+        message = Message(transmit)
+        if not "protocol" in message.data or message.data["protocol"] != "SingleStep":
+            return
+        self.singleStepNI.receiveMessage(message)
 
     #message used by simulator
     #gets message interface wants broadcasted
     def getOutgoing(self):
-        if self.outGoing:
-            return self.outGoing.popleft()
+        if self.outgoing:
+            return self.outgoing.popleft()
         else:
             return None
+    
+    def __tryReceiveMessage(self,transmit):
+        try:
+            jsn = json.loads(transmit)
+        except JSONDecodeError:
+            self.incoming.append(transmit)
+            return
+        if not type(jsn) is dict or "protocol" not in jsn:
+            self.incoming.append(transmit)
+            return
+        message = Message(transmit)
+        if message.data["protocol"] == "SingleStep":
+            self.singleStepNI.receiveMessage(message)
+        elif message.data["protocol"] == "DynamicRouting":
+            self.dynamicRoutingNI.receiveMessage(message)
