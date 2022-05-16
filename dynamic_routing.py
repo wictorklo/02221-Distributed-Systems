@@ -451,6 +451,4 @@ class DynamicRoutingNI:
         
 
 #TODO: 
-#requirements for automatic ping (unexpected neighbour)
-#requirements for automatic general info table correction
 #tests
