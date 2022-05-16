@@ -34,7 +34,7 @@ class DynamicRoutingNI:
             if ID != self.ID:
                 self.lastCorrections[ID] = 0
         self.timeouts["infocast"] = self.defaultInfoTimeout
-        self.timeoutHandlers["infocast"] = self.__infocast()
+        self.timeoutHandlers["infocast"] = self.__infocast
 
     def tick(self):
         for seq in list(self.timeouts.keys()):
@@ -160,7 +160,8 @@ class DynamicRoutingNI:
         self.infoTable[self.ID]["timestamp"] = self.clock
         message = InfoDRMessage()
         message.data["info"] = self.infoTable[self.ID]
-        message.autoComplete()
+        message.autoComplete(self.ID,self.seq,self.clock)
+        self.seq += 1
 
         bcMessage = BroadcastMessage()
         bcMessage.data["payload"] = message.getTransmit()

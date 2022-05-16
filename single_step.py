@@ -16,8 +16,11 @@ class SingleStepNI:
         self.__sendMessage(message)
 
     def broadcast(self, message : 'BroadcastMessage'):
+        message.autoComplete(self.ID,self.seq)
+        if message.data["source"] == self.ID and message.data["seq"] == self.seq:
+            self.seq += 1
         self.broadcastLog.add((message.data["source"],message.data["seq"]))
-        self.__sendMessage(message)
+        self.sendPrimitive(message.getTransmit())
 
     def ping(self):
         self.neighbours = set()

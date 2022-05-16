@@ -39,7 +39,10 @@ class NetworkInterface:
         if not "protocol" in message.data:
             return "NoProtocol"
         if message.data["protocol"] == "DynamicRouting":
-            return self.dynamicRoutingNI.sendPayloadMessage(message)
+            if message.data["type"] == "payload":
+                return self.dynamicRoutingNI.sendPayloadMessage(message)
+            elif message.data["type"] == "predicast":
+                return self.dynamicRoutingNI.predicast(message)
         elif message.data["protocol"] == "SingleStep":
             return self.singleStepNI.sendPayloadMessage(message)
     
