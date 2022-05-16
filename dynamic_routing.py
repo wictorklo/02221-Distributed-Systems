@@ -113,6 +113,12 @@ class DynamicRoutingNI:
     def predicast(self,message : 'PredicastDRMessage'):
         self.predicastLog.add((message.data["source"],message.data["seq"]))
         self.__sendPredicast(message)
+
+    def newPosition(self,xpos,ypos):
+        self.clock += 1
+        self.infoTable[self.ID]["xpos"] = xpos
+        self.infoTable[self.ID]["ypos"] = ypos
+        self.infoTable[self.ID]["timestamp"] = self.clock
     
     def __sendPredicast(self,message : 'PredicastDRMessage'):
         message.autoComplete(self.ID,self.seq,self.clock)
