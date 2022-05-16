@@ -1,5 +1,6 @@
 #general test of software componenents
 import json
+from typing import Set
 import unittest as ut
 from simulator import *
 from script import EmptyScript
@@ -132,21 +133,23 @@ class TestSimulator(ut.TestCase):
         self.assertFalse(isOnFire(sim.map[1][0]))
         self.assertFalse(isOnFire(sim.map[1][1]))
 
-    @ut.skip("not updated to new interfaces")
     def test_transmit_message(self):
         script = EmptyScript()
         tmap = emptyMap(10,10,flammable=True)
-        ni1 = NetworkInterface(1)
-        ni2 = NetworkInterface(2)
+        routingTable = {"1" : set(["2"]), "2" : set(["1"])}
+        ni1 = NetworkInterface("1", routingTable)
+        ni2 = NetworkInterface("2", routingTable)
         drone1 = ADrone(ni1,tmap,xpos = 1,ypos = 1)
         drone2 = ADrone(ni2,tmap,xpos = 2,ypos = 2)
         drone2.think = lambda : None #turn off mechanism that consumes messages in drone2
-        sim = Simulator(tmap,script,[drone1,drone2],[])
+        sim = Simulator(tmap,script,[drone2,drone1],[], transmissionsPerTurn=1)
 
-        message = PayloadFloodMessage()
+        message = PayloadSSMessage()
         message.data = {
-            "destination" : 2,
-            "payload" : "hello"
+            "destination" : "2",
+            "payload" : "hello",
+            "type":"payload",
+            "protocol":"SingleStep"
             }
         drone1.networkInterface.sendMessage(message)
 
@@ -175,12 +178,13 @@ class TestSimulator(ut.TestCase):
             isOnFire(drone1.map[1][1])
         )
     
-    @ut.skip("not updated to new interfaces")
+    #@ut.skip("not updated to new interfaces")
     def test_internal_state_change_message(self):
         script = EmptyScript()
         tmap = emptyMap(50,50,flammable=True)
-        ni1 = NetworkInterface(1,None)
-        ni2 = NetworkInterface(2,None)
+        routingTable = {"1" : set(["2"]), "2" : set(["1"])}
+        ni1 = NetworkInterface("1",routingTable)
+        ni2 = NetworkInterface("2",routingTable)
         drone1 = BDrone(ni1,tmap,xpos = 49,ypos = 49)
         drone2 = BDrone(ni2,tmap,xpos = 46,ypos = 46)
         sim = Simulator(tmap,script,[],[drone1,drone2])
@@ -190,10 +194,12 @@ class TestSimulator(ut.TestCase):
         observation.tiles.append((3,1,0))
         observation.tiles.append((3,0,1))
         observation.tiles.append((3,1,1))
-        message = PayloadFloodMessage()
+        message = PayloadSSMessage()
         message.data = {
-            'destination' : 1,
-            'payload' : observation.getObservationPayload()
+            'destination' : "1",
+            'payload' : observation.getObservationPayload(),
+            'type': 'payload',
+            'protocol': 'SingleStep'
         }
         drone2.networkInterface.sendMessage(message)
 
@@ -219,22 +225,22 @@ class TestSimulator(ut.TestCase):
 
 
 class TestNetworkInterface(ut.TestCase):
-    @ut.skip("not updated to new interfaces")
     def test_recieve_message(self):
-        ni1 = NetworkInterface(1)
+        routingTable = {"1" : set(["2"]), "2" : set(["1"])}
+        ni1 = NetworkInterface("1", routingTable)
         ni1.receiveMessage(json.dumps({
             "source" : 0,
-            "destination" : 1,
-            "ttl" : 2,
+            "destination" : "1",
             "type" : "payload",
             "seq" : 0,
-            "payload" : "hello"
+            "payload" : "hello",
+            "protocol":"SingleStep"
             }))
         self.assertEqual(ni1.getIncoming(),"hello")
 
     @ut.skip("not updated to new interfaces")
     def test_bounce_message(self):
-        ni1 = NetworkInterface(1)
+        ni1 = NetworkInterface("1")
         message = PayloadFloodMessage()
         message.data = {
             "source" : 0,

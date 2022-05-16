@@ -1,7 +1,8 @@
 from pyparsing import nullDebugAction
 from drones import ADrone, BDrone
-from legacy import NetworkInterface, Message, PayloadFloodMessage
+#from legacy import NetworkInterface, Message, PayloadFloodMessage
 import json
+from network_interfaces import *
 
 
 class Script:
@@ -14,40 +15,33 @@ class Script:
         pass
 
 def succeed1(map, a, b : 'list[BDrone]'):
-    message = PayloadFloodMessage()
+    message = PayloadDRMessage()
     message.data = {
-        "source" : b[0].networkInterface.ID,
-        "destination" : a[0].networkInterface.ID,
-        "type": "payload",
-        "ttl" : 5,
-        "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []})
+        "source" : "1",
+        "destination" : "2",
+        "type" : "payload",
+        "seq" : 0,
+        "payload" : json.dumps({"type":"None"}),
+        "protocol":"DynamicRouting",
+        "route" : {"1" : "2", "2" : "2"},
+        "timestamp" : 0
     }
-    b[0].networkInterface.sendMessage(message,timeout=10,retries=2)
+    b[0].networkInterface.sendMessage(message)
     return map, a, b, True
 
 transmissionSucceed = [Script(succeed1)]
 
 def dropped1(map, a, b):
-    message = PayloadFloodMessage()
+    message = PayloadDRMessage()
     message.data = {
-        "destination" : b[0].networkInterface.ID,
-        "type": "payload",
-        "ttl" : 5,
-        "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []})
-    }
-    a[0].networkInterface.sendMessage(message,retries = 0)
-    a[0].networkInterface.getOutgoing()
-    return map, a, b, True
-
-def retry(map, a, b):
-    message = PayloadFloodMessage()
-    message.data = {
-        "source" : a[0].networkInterface.ID,
-        "destination" : b[0].networkInterface.ID,
-        "type": "payload",
-        "ttl" : 5,
-        "payload" : json.dumps({"type" : "observation","tiles" : [], "drones" : []}),
-        "seq" : 1
+        "source" : "1",
+        "destination" : "2",
+        "type" : "payload",
+        "seq" : 0,
+        "payload" : json.dumps({"type":"None"}),
+        "protocol":"DynamicRouting",
+        "route" : {"1" : "2", "2" : "2"},
+        "timestamp" : 0
     }
     a[0].networkInterface.sendMessage(message)
     a[0].networkInterface.getOutgoing()
