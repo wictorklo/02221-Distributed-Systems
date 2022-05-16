@@ -80,6 +80,11 @@ class CorrectionDRMessage(DRMessage):
         super().autoComplete(DroneID, seq, clock)
         self.data['type'] = 'correction'
 
+class InfoDRMessage(DRMessage):
+    def autoComplete(self, DroneID, seq, clock):
+        super().autoComplete(DroneID, seq, clock)
+        self.data['type'] = 'info'
+
 class PerformCorrectionDRMessage(DRMessage):
     def autoComplete(self, DroneID, seq, clock):
         super().autoComplete(DroneID, seq, clock)

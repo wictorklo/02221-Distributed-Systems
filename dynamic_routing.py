@@ -9,7 +9,7 @@ class DynamicRoutingNI:
             ID : 'str', singleStepNI : 'SingleStepNI', routingTable, infoTable,
             defaultTimeoutOrigin = 100, defaultTimeoutRouting = 20,
             defaultRetriesOrigin = 5, defaultRetriesRouting = 3,
-            defaultPingTimeout = 6):
+            defaultPingTimeout = 6, defaultInfoTimeout = 150):
         self.ID = ID
         self.singleStepNI = singleStepNI
         self.timeouts = {}
@@ -26,12 +26,15 @@ class DynamicRoutingNI:
         self.defaultRetriesOrigin = defaultRetriesOrigin
         self.defaultRetriesRouting = defaultRetriesRouting
         self.defaultPingTimeout = defaultPingTimeout
+        self.defaultInfoTimeout = defaultInfoTimeout
         self.seq = 1
         self.clock = 0
         self.lastCorrections = {self.ID : self.clock}
         for ID in self.routingTable:
             if ID != self.ID:
                 self.lastCorrections[ID] = 0
+        self.timeouts["infocast"] = self.defaultInfoTimeout
+        self.timeoutHandlers["infocast"] = self.__infocast()
 
     def tick(self):
         for seq in list(self.timeouts.keys()):
@@ -85,7 +88,10 @@ class DynamicRoutingNI:
             return #performCorrection messages don't expect acks
         elif message.data['type'] == 'predicast':
             self.__receivePredicast(message)
-            return #performCorrection messages don't expect acks
+            return #predicast messages don't expect acks
+        elif message.data['type'] == 'info':
+            self.__receiveInfo(message)
+            return #info messages don't expect acks
         
         #we misuse the source field to store the source of the message we are acking
         #this scheme could lead to problems if we are excpecting acks from multiple nodes for the same message
@@ -113,7 +119,7 @@ class DynamicRoutingNI:
         if message.data["source"] == self.ID and message.data["seq"] == self.seq:
             self.seq += 1
 
-        destinations : 'set[str]' = self.__fulfillsPredicate(message.data["predicate"])
+        destinations : 'set[str]' = self.fulfillsPredicate(message.data["predicate"])
         if self.ID in destinations:
             destinations.remove(self.ID)
         if message.data["source"] in destinations:
@@ -137,6 +143,22 @@ class DynamicRoutingNI:
             ssMessage.data["payload"] = message.getTransmit()
             ssMessage.data["destination"] = route[1]
             self.singleStepNI.sendPayloadMessage(ssMessage)
+
+    def __receiveInfo(self, message : 'InfoDRMessage'):
+        if message.data["info"]["timestamp"] > self.infoTable[message.data["source"]]["timestamp"]:
+            self.infoTable[message.data["source"]] = message.data["info"]
+
+    def __infocast(self):
+        self.clock += 1
+        self.timeouts["infocast"] = self.defaultInfoTimeout
+        self.infoTable[self.ID]["timestamp"] = self.clock
+        message = InfoDRMessage()
+        message.data["info"] = self.infoTable[self.ID]
+        message.autoComplete()
+
+        bcMessage = BroadcastMessage()
+        bcMessage.data["payload"] = message.getTransmit()
+        self.singleStepNI.broadcast(bcMessage)
 
     #used in intermediate steps
     #we assume message contains necessary info
