@@ -256,8 +256,12 @@ class TestNetworkInterface(ut.TestCase):
 class TestDynamicRouting(ut.TestCase):
     def test_recieves_and_acks_payload_message(self):
         routingTable = {"1" : set(["2"]), "2" : set(["1"])}
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
         singleStepNI = MockSingleStepNI("1",set(),None)
-        dynamicRoutingNI = DynamicRoutingNI("1",singleStepNI,routingTable)
+        dynamicRoutingNI = DynamicRoutingNI("1",singleStepNI,routingTable,infoTable)
         payloadMessage = PayloadDRMessage()
         payloadMessage.data["source"] = "2"
         payloadMessage.data["destination"] = "1"
@@ -286,8 +290,12 @@ class TestDynamicRouting(ut.TestCase):
     
     def test_bounce_message(self):
         routingTable = {"1" : set(["2"]), "2" : set(["1","3"]), "3" : set(["2"])}
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
         singleStepNI = MockSingleStepNI("2",set(),None)
-        dynamicRoutingNI = DynamicRoutingNI("2",singleStepNI,routingTable)
+        dynamicRoutingNI = DynamicRoutingNI("2",singleStepNI,routingTable,infoTable)
         payloadMessage = PayloadDRMessage()
         payloadMessage.data["source"] = "1"
         payloadMessage.data["destination"] = "3"
@@ -316,9 +324,13 @@ class TestDynamicRouting(ut.TestCase):
 
     def test_multiple_jumps(self):
         routingTable = {"1" : set(["2"]), "2" : set(["1","3"]), "3" : set(["2"])}
-        networkInterface1 = NetworkInterface("1",routingTable)
-        networkInterface2 = NetworkInterface("2",routingTable)
-        networkInterface3 = NetworkInterface("3",routingTable)
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
+        networkInterface1 = NetworkInterface("1",routingTable,infoTable)
+        networkInterface2 = NetworkInterface("2",routingTable,infoTable)
+        networkInterface3 = NetworkInterface("3",routingTable,infoTable)
         payloadMessage = PayloadDRMessage()
         payloadMessage.data["source"] = "1"
         payloadMessage.data["destination"] = "3"
@@ -344,9 +356,13 @@ class TestDynamicRouting(ut.TestCase):
 
     def test_correct_routing(self):
         routingTable = {"1" : set(["2"]), "2" : set(["1","3"]), "3" : set(["2"])}
-        networkInterface1 = NetworkInterface("1",routingTable)
-        networkInterface2 = NetworkInterface("2",routingTable)
-        networkInterface3 = NetworkInterface("3",routingTable)
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
+        networkInterface1 = NetworkInterface("1",routingTable,infoTable)
+        networkInterface2 = NetworkInterface("2",routingTable,infoTable)
+        networkInterface3 = NetworkInterface("3",routingTable,infoTable)
         payloadMessage = PayloadDRMessage()
         payloadMessage.data["source"] = "1"
         payloadMessage.data["destination"] = "3"
@@ -386,3 +402,17 @@ class TestDynamicRouting(ut.TestCase):
         self.assertEqual(set(["3"]),networkInterface3.dynamicRoutingNI.routingTable["1"])
         p = networkInterface3.getIncoming()
         self.assertEqual("payload1",p)
+
+    def test_predicate_evaluation(self):
+        routingTable = {"1" : set(["2"]), "2" : set(["1","3"]), "3" : set(["2"])}
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
+        networkInterface1 = NetworkInterface("1",routingTable,infoTable)
+        drones = networkInterface1.dynamicRoutingNI.fulfillsPredicate(["typeA",["varDrone"]])
+        self.assertEqual(set(["1","2"]),drones)
+
+        drones = networkInterface1.dynamicRoutingNI.fulfillsPredicate(["less",["dist",["xpos",["varDrone"]],["ypos",["varDrone"]],["num",1],["num",0]],["num",1.3]])
+        self.assertEqual(set(["1","2"]),drones)
+        

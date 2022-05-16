@@ -60,6 +60,11 @@ class PayloadDRMessage(DRMessage):
         super().autoComplete(DroneID,seq,clock)
         self.data['type'] = 'payload'
 
+class PredicastDRMessage(DRMessage):
+    def autoComplete(self,DroneID,seq,clock):
+        super().autoComplete(DroneID,seq,clock)
+        self.data['type'] = 'predicast'
+
 class PayloadAckDRMessage(DRMessage):
     def autoComplete(self,DroneID,seq,clock):
         super().autoComplete(DroneID,seq,clock)
@@ -74,6 +79,11 @@ class CorrectionDRMessage(DRMessage):
     def autoComplete(self, DroneID, seq, clock):
         super().autoComplete(DroneID, seq, clock)
         self.data['type'] = 'correction'
+
+class InfoDRMessage(DRMessage):
+    def autoComplete(self, DroneID, seq, clock):
+        super().autoComplete(DroneID, seq, clock)
+        self.data['type'] = 'info'
 
 class PerformCorrectionDRMessage(DRMessage):
     def autoComplete(self, DroneID, seq, clock):
