@@ -2,10 +2,11 @@ from single_step import SingleStepNI
 from messages import *
 from collections import deque
 import util
+import math
 
 class DynamicRoutingNI:
     def __init__(self,
-            ID : 'str', singleStepNI : 'SingleStepNI', routingTable,
+            ID : 'str', singleStepNI : 'SingleStepNI', routingTable, infoTable,
             defaultTimeoutOrigin = 100, defaultTimeoutRouting = 20,
             defaultRetriesOrigin = 5, defaultRetriesRouting = 3,
             defaultPingTimeout = 6):
@@ -16,8 +17,10 @@ class DynamicRoutingNI:
         self.retries = {}
         self.timeoutStarts = {}
         self.payloadLog = set()
+        self.predicastLog = set()
         self.incoming = deque()
         self.routingTable = routingTable
+        self.infoTable = infoTable
         self.defaultTimeoutOrigin = defaultTimeoutOrigin
         self.defaultTimeoutRouting = defaultTimeoutRouting
         self.defaultRetriesOrigin = defaultRetriesOrigin
@@ -80,6 +83,9 @@ class DynamicRoutingNI:
         elif message.data['type'] == 'performCorrection':
             self.__correctRouting()
             return #performCorrection messages don't expect acks
+        elif message.data['type'] == 'predicast':
+            self.__receivePredicast(message)
+            return #performCorrection messages don't expect acks
         
         #we misuse the source field to store the source of the message we are acking
         #this scheme could lead to problems if we are excpecting acks from multiple nodes for the same message
@@ -97,8 +103,28 @@ class DynamicRoutingNI:
         ssMessage.data["payload"] = ack.getTransmit()
         ssMessage.data["destination"] = destination
         self.singleStepNI.sendPayloadMessage(ssMessage)
+    
+    def predicast(self,message : 'PredicastDRMessage'):
+        self.predicastLog.add((message.data["source"],message.data["seq"]))
+        self.__sendPredicast(message)
+    
+    def __sendPredicast(self,message : 'PredicastDRMessage'):
+        destinations : 'set[str]' = self.__fulfillsPredicate(message.data["predicate"])
+        if self.ID in destinations:
+            destinations.remove(self.ID)
+        if message.data["source"] in destinations:
+            destinations.remove(message.data["source"])
+        self.__multicast(message,destinations)
 
-    def __multicast(self,message : 'Message',destinations):
+    def __receivePredicast(self, message : 'PredicastDRMessage'):
+        if (message.data["source"],message.data["seq"]) in self.predicastLog:
+            return #already handled
+        self.predicastLog.add((message.data["source"],message.data["seq"]))
+        if self.__evaluatePredicate(message.data["predicate"],self.ID):
+            self.incoming.append(message.data["payload"])
+        self.__sendPredicast(message)
+
+    def __multicast(self, message : 'Message',destinations):
         for destination in destinations:
             route = util.route(self.ID,destination,self.routingTable)
             if not route:
@@ -145,7 +171,6 @@ class DynamicRoutingNI:
             if not self.__findRoute(message):
                 return "NoRoute"
 
-        
         #send through SS layer
         nextStepID = message.data["route"][self.ID]
         ssMessage = PayloadSSMessage()
@@ -262,8 +287,137 @@ class DynamicRoutingNI:
                 return prev
         return None
 
+    def __fulfillsPredicate(self, predicate):
+        fulfills = set([])
+        for DroneID in self.infoTable:
+            if self.__evaluatePredicate(predicate,DroneID):
+                fulfills.add(DroneID)
+        return fulfills
+
+#Predicate language
+#pred =
+#   | true
+#   | false
+#   | not (pred)
+#   | and (pred, pred)
+#   | or (pred,pred)
+#   | eq (exp,exp)
+#   | leq (exp,exp)
+#   | less (exp,exp)
+#   | typeA (droneID)
+#   | typeB (droneID)
+#
+#exp =
+#   | xpos (droneID)
+#   | ypos (droneID)
+#   | num (num)
+#   | dist (exp,exp,exp,exp)
+#   | plus (exp,exp)
+#   | minus (exp,exp)
+#   | times (exp,exp)
+#   | div (exp,exp)
+#   | sqrt (exp)
+#
+#droneID =
+#   | varDrone
+#   | drone (str)
+
+    #evaluate predicate with some failsafes
+    def __evaluatePredicate(self, predicate, DroneID):
+        try:
+            eval = self.__evaluatePredicateRec(predicate,DroneID)
+        except ValueError:
+            return False
+        except ZeroDivisionError:
+            return False
+        if not eval:
+            return False
+        return eval
+
+    def __evaluatePredicateRec(self, predicate, DroneID):
+        if predicate[0] == "true":
+            return True
+        if predicate[0] == "false":
+            return False
+        if predicate[0] == "not":
+            return not self.__evaluatePredicateRec(predicate[1],DroneID)
+        if predicate[0] == "and":
+            if not self.__evaluatePredicateRec(predicate[1],DroneID):
+                return False
+            if not self.__evaluatePredicateRec(predicate[2],DroneID):
+                return False
+            return True
+        if predicate[0] == "or":
+            if self.__evaluatePredicateRec(predicate[1],DroneID):
+                return True
+            if self.__evaluatePredicateRec(predicate[2],DroneID):
+                return True
+            return False
+        if predicate[0] == "eq":
+            x = self.__evaluateExpression(predicate[1],DroneID)
+            y = self.__evaluateExpression(predicate[2],DroneID)
+            return x == y
+        if predicate[0] == "less":
+            x = self.__evaluateExpression(predicate[1],DroneID)
+            y = self.__evaluateExpression(predicate[2],DroneID)
+            return x < y
+        if predicate[0] == "leq":
+            x = self.__evaluateExpression(predicate[1],DroneID)
+            y = self.__evaluateExpression(predicate[2],DroneID)
+            return x <= y
+        if predicate[0] == "typeA":
+            droneID = self.__evaluateDroneID(predicate[1],DroneID)
+            return self.infoTable[droneID]["type"] == "A"
+        if predicate[0] == "typeB":
+            droneID = self.__evaluateDroneID(predicate[1],DroneID)
+            return self.infoTable[droneID]["type"] == "B"
+
+    def __evaluateExpression(self, expression, DroneID):
+        if expression[0] == "xpos":
+            droneID = self.__evaluateDroneID(expression[1],DroneID)
+            return self.infoTable[droneID]["xpos"]
+        if expression[0] == "ypos":
+            droneID = self.__evaluateDroneID(expression[1],DroneID)
+            return self.infoTable[droneID]["ypos"]
+        if expression[0] == "num":
+            return expression[1]
+        if expression[0] == "plus":
+            x = self.__evaluateExpression(expression[1],DroneID)
+            y = self.__evaluateExpression(expression[2],DroneID)
+            return x + y
+        if expression[0] == "minus":
+            x = self.__evaluateExpression(expression[1],DroneID)
+            y = self.__evaluateExpression(expression[2],DroneID)
+            return x - y
+        if expression[0] == "times":
+            x = self.__evaluateExpression(expression[1],DroneID)
+            y = self.__evaluateExpression(expression[2],DroneID)
+            return x * y
+        if expression[0] == "div":
+            x = self.__evaluateExpression(expression[1],DroneID)
+            y = self.__evaluateExpression(expression[2],DroneID)
+            return x / y
+        if expression[0] == "sqrt":
+            x = self.__evaluateExpression(expression[1],DroneID)
+            return math.sqrt(x)
+        if expression[0] == "dist":
+            x1 = self.__evaluateExpression(expression[1],DroneID)
+            y1 = self.__evaluateExpression(expression[2],DroneID)
+            x2 = self.__evaluateExpression(expression[3],DroneID)
+            y2 = self.__evaluateExpression(expression[4],DroneID)
+            x = x2 - x1
+            y = y2 - y1
+            return math.sqrt(x * x + y * y)
+        
+
+    def __evaluateDroneID(self, idExpression, DroneID):
+        if idExpression[0] == "varDrone":
+            return DroneID
+        if idExpression[0] == "drone":
+            return idExpression[1]
+        
+
 #TODO: 
-#expand routing tables with drone type and coordinates + timestamps
 #requirements for automatic ping (unexpected neighbour)
 #requirements for automatic general info table correction
 #tests
