@@ -137,8 +137,8 @@ class TestSimulator(ut.TestCase):
         script = EmptyScript()
         tmap = emptyMap(10,10,flammable=True)
         routingTable = {"1" : set(["2"]), "2" : set(["1"])}
-        ni1 = NetworkInterface("1", routingTable)
-        ni2 = NetworkInterface("2", routingTable)
+        ni1 = NetworkInterface("1", routingTable, None)
+        ni2 = NetworkInterface("2", routingTable, None)
         drone1 = ADrone(ni1,tmap,xpos = 1,ypos = 1)
         drone2 = ADrone(ni2,tmap,xpos = 2,ypos = 2)
         drone2.think = lambda : None #turn off mechanism that consumes messages in drone2
@@ -183,8 +183,8 @@ class TestSimulator(ut.TestCase):
         script = EmptyScript()
         tmap = emptyMap(50,50,flammable=True)
         routingTable = {"1" : set(["2"]), "2" : set(["1"])}
-        ni1 = NetworkInterface("1",routingTable)
-        ni2 = NetworkInterface("2",routingTable)
+        ni1 = NetworkInterface("1",routingTable, None)
+        ni2 = NetworkInterface("2",routingTable, None)
         drone1 = BDrone(ni1,tmap,xpos = 49,ypos = 49)
         drone2 = BDrone(ni2,tmap,xpos = 46,ypos = 46)
         sim = Simulator(tmap,script,[],[drone1,drone2])
@@ -227,7 +227,7 @@ class TestSimulator(ut.TestCase):
 class TestNetworkInterface(ut.TestCase):
     def test_recieve_message(self):
         routingTable = {"1" : set(["2"]), "2" : set(["1"])}
-        ni1 = NetworkInterface("1", routingTable)
+        ni1 = NetworkInterface("1", routingTable, None)
         ni1.receiveMessage(json.dumps({
             "source" : 0,
             "destination" : "1",
@@ -238,7 +238,7 @@ class TestNetworkInterface(ut.TestCase):
             }))
         self.assertEqual(ni1.getIncoming(),"hello")
 
-    @ut.skip("not updated to new interfaces")
+    @ut.skip("Not relevant for new interfaces")
     def test_bounce_message(self):
         ni1 = NetworkInterface("1")
         message = PayloadFloodMessage()
