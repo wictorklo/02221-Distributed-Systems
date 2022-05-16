@@ -2,7 +2,8 @@
 import json
 import unittest as ut
 from simulator import *
-from script import *
+from script import EmptyScript
+from network_interfaces import *
 from util import *
 import math
 
@@ -248,7 +249,6 @@ class TestNetworkInterface(ut.TestCase):
 
 class TestDynamicRouting(ut.TestCase):
     def test_recieves_and_acks_payload_message(self):
-        print("")
         routingTable = {"1" : set(["2"]), "2" : set(["1"])}
         singleStepNI = MockSingleStepNI("1",set(),None)
         dynamicRoutingNI = DynamicRoutingNI("1",singleStepNI,routingTable)
@@ -264,4 +264,119 @@ class TestDynamicRouting(ut.TestCase):
         self.assertIn("payload1",dynamicRoutingNI.incoming)
 
         self.assertEqual(2,len(singleStepNI.sendPayloads))
+        m1 = singleStepNI.sendPayloads[0]
+        m2 = singleStepNI.sendPayloads[1]
+        p1 = Message(m1.data["payload"])
+        p2 = Message(m2.data["payload"])
+        if p1.data["type"] == "payloadAck":
+            ackPay = p1
+            ack = p2
+        else:
+            ackPay = p2
+            ack = p1
+        self.assertEqual("payloadAck",ackPay.data["type"])
+        self.assertEqual("ack",ack.data["type"])
         
+    
+    def test_bounce_message(self):
+        routingTable = {"1" : set(["2"]), "2" : set(["1","3"]), "3" : set(["2"])}
+        singleStepNI = MockSingleStepNI("2",set(),None)
+        dynamicRoutingNI = DynamicRoutingNI("2",singleStepNI,routingTable)
+        payloadMessage = PayloadDRMessage()
+        payloadMessage.data["source"] = "1"
+        payloadMessage.data["destination"] = "3"
+        payloadMessage.data["payload"] = "payload1"
+        payloadMessage.data["type"] = "payload"
+        payloadMessage.data["seq"] = 1
+        payloadMessage.data["timestamp"] = 0
+        payloadMessage.data["route"] = {"1" : "2", "2" : "3"}
+        dynamicRoutingNI.receiveMessage(payloadMessage)
+
+        self.assertEqual(2,len(singleStepNI.sendPayloads))
+        m1 = singleStepNI.sendPayloads[0]
+        m2 = singleStepNI.sendPayloads[1]
+        p1 = Message(m1.data["payload"])
+        p2 = Message(m2.data["payload"])
+        if p1.data["type"] == "payload":
+            pay = p1
+            ack = p2
+        else:
+            pay = p2
+            ack = p1
+        print(p1.data)
+        print(p2.data)
+        self.assertEqual("payload",pay.data["type"])
+        self.assertEqual("ack",ack.data["type"])
+
+    def test_multiple_jumps(self):
+        routingTable = {"1" : set(["2"]), "2" : set(["1","3"]), "3" : set(["2"])}
+        networkInterface1 = NetworkInterface("1",routingTable)
+        networkInterface2 = NetworkInterface("2",routingTable)
+        networkInterface3 = NetworkInterface("3",routingTable)
+        payloadMessage = PayloadDRMessage()
+        payloadMessage.data["source"] = "1"
+        payloadMessage.data["destination"] = "3"
+        payloadMessage.data["payload"] = "payload1"
+        payloadMessage.data["type"] = "payload"
+        payloadMessage.data["seq"] = 1
+        payloadMessage.data["timestamp"] = 0
+        payloadMessage.data["route"] = {"1" : "2", "2" : "3"}
+        payloadMessage.data["protocol"] = "DynamicRouting"
+        networkInterface1.sendMessage(payloadMessage)
+        while True:
+            m = networkInterface1.getOutgoing()
+            if not m:
+                break
+            networkInterface2.receiveMessage(m)
+        while True:
+            m = networkInterface2.getOutgoing()
+            if not m:
+                break
+            networkInterface1.receiveMessage(m)
+            networkInterface3.receiveMessage(m)
+        self.assertEqual("payload1",networkInterface3.getIncoming())
+
+    def test_correct_routing(self):
+        routingTable = {"1" : set(["2"]), "2" : set(["1","3"]), "3" : set(["2"])}
+        networkInterface1 = NetworkInterface("1",routingTable)
+        networkInterface2 = NetworkInterface("2",routingTable)
+        networkInterface3 = NetworkInterface("3",routingTable)
+        payloadMessage = PayloadDRMessage()
+        payloadMessage.data["source"] = "1"
+        payloadMessage.data["destination"] = "3"
+        payloadMessage.data["payload"] = "payload1"
+        payloadMessage.data["type"] = "payload"
+        payloadMessage.data["seq"] = 1
+        payloadMessage.data["timestamp"] = 0
+        payloadMessage.data["route"] = {"1" : "2", "2" : "3"}
+        payloadMessage.data["protocol"] = "DynamicRouting"
+        networkInterface1.sendMessage(payloadMessage)
+        networkInterface1.getOutgoing()
+        while True:
+            networkInterface1.tick()
+            m = networkInterface1.getOutgoing()
+            if m:
+                break
+        ping = PingSSMessage(m)
+        self.assertEqual("SingleStep",ping.data["protocol"])
+        self.assertEqual("ping",ping.data["type"])
+        networkInterface3.receiveMessage(m)
+
+        m = networkInterface3.getOutgoing()
+        pong = PongSSMessage(m)
+        self.assertEqual("SingleStep",pong.data["protocol"])
+        self.assertEqual("pong",pong.data["type"])
+
+        networkInterface1.receiveMessage(m)
+        count = 0
+        while count < 3:
+            networkInterface1.tick()
+            m = networkInterface1.getOutgoing()
+            if m:
+                networkInterface3.receiveMessage(m)
+                count += 1
+                print(m)
+        self.assertEqual(set(["3"]),networkInterface1.dynamicRoutingNI.routingTable["1"])
+        self.assertEqual(set(["3"]),networkInterface3.dynamicRoutingNI.routingTable["1"])
+        p = networkInterface3.getIncoming()
+        self.assertEqual("payload1",p)

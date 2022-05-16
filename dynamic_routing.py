@@ -26,12 +26,17 @@ class DynamicRoutingNI:
         self.seq = 1
         self.clock = 0
         self.lastCorrections = {self.ID : self.clock}
+        for ID in self.routingTable:
+            if ID != self.ID:
+                self.lastCorrections[ID] = 0
 
     def tick(self):
-        for seq in self.timeouts:
+        for seq in list(self.timeouts.keys()):
             self.timeouts[seq] -= 1
             if self.timeouts[seq] <= 0:
                 self.timeoutHandlers[seq]()
+        if not self.routingTable[self.ID] == self.singleStepNI.neighbours:
+            self.__correctRouting()
 
 
     #just used in first step
@@ -124,9 +129,13 @@ class DynamicRoutingNI:
             del self.timeoutStarts[seq]
             return "RetriesExhausted"
         self.retries[seq] -= 1
-        #add route if missing
-        if not "route" in message.data and not self.__findRoute(message):
-            return "NoRoute"
+
+        #add route if missing or outdated
+        if not "route" in message.data or self.timeoutStarts[seq] < self.lastCorrections[self.ID]:
+            if not self.__findRoute(message):
+                return "NoRoute"
+
+        
         #send through SS layer
         nextStepID = message.data["route"][self.ID]
         ssMessage = PayloadSSMessage()

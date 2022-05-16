@@ -33,13 +33,13 @@ class SingleStepNI:
             self.incoming.append(message.data["payload"])
         if (message.data["type"] == "broadcast" and 
                 not (message.data["source"],message.data["seq"]) in self.broadcastLog):
-            self.broadcastLog((message.data["source"],message.data["seq"]))
+            self.broadcastLog.add((message.data["source"],message.data["seq"]))
             self.incoming.append(message.data["payload"])
             self.__sendMessage(message)
         
 
     def __sendMessage(self, message : 'SSMessage'):
-        message.autoComplete(self.ID,self.ID)
+        message.autoComplete(self.ID,self.seq)
         if message.data["source"] == self.ID and message.data["seq"] == self.seq:
             self.seq += 1
         self.sendPrimitive(message.getTransmit())

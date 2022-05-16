@@ -42,7 +42,7 @@ class BroadcastMessage(SSMessage):
     def autoComplete(self,DroneID,seq):
         super().autoComplete(DroneID, seq)
         if not 'type' in self.data:
-            self.data = 'broadcast'
+            self.data['type'] = 'broadcast'
 
 class DRMessage(Message):
     def autoComplete(self,DroneID,seq,clock):
