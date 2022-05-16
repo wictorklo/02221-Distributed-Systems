@@ -380,3 +380,17 @@ class TestDynamicRouting(ut.TestCase):
         self.assertEqual(set(["3"]),networkInterface3.dynamicRoutingNI.routingTable["1"])
         p = networkInterface3.getIncoming()
         self.assertEqual("payload1",p)
+
+    def test_predicate_evaluation(self):
+        routingTable = {"1" : set(["2"]), "2" : set(["1","3"]), "3" : set(["2"])}
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
+        networkInterface1 = NetworkInterface("1",routingTable,infoTable)
+        drones = networkInterface1.dynamicRoutingNI.fulfillsPredicate(["typeA",["varDrone"]])
+        self.assertEqual(set(["1","2"]),drones)
+
+        drones = networkInterface1.dynamicRoutingNI.fulfillsPredicate(["less",["dist",["xpos",["varDrone"]],["ypos",["varDrone"]],["num",1],["num",0]],["num",1.3]])
+        self.assertEqual(set(["1","2"]),drones)
+        

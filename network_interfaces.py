@@ -7,7 +7,7 @@ from single_step import SingleStepNI
 
 class NetworkInterface:
     def __init__(self, 
-            ID : 'str', routingTable,
+            ID : 'str', routingTable, infoTable,
             defaultTimeoutOrigin = 100, defaultTimeoutRouting = 20,
             defaultRetriesOrigin = 5, defaultRetriesRouting = 3,
             defaultPingTimeout = 6):
@@ -21,7 +21,7 @@ class NetworkInterface:
             self.ID, routingTable[self.ID], sendPrimitive
         )
         self.dynamicRoutingNI = DynamicRoutingNI(
-            ID, self.singleStepNI, routingTable,
+            ID, self.singleStepNI, routingTable, infoTable,
             defaultTimeoutOrigin = defaultTimeoutOrigin, 
             defaultTimeoutRouting = defaultTimeoutRouting,
             defaultRetriesOrigin = defaultRetriesOrigin, 

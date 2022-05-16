@@ -109,6 +109,10 @@ class DynamicRoutingNI:
         self.__sendPredicast(message)
     
     def __sendPredicast(self,message : 'PredicastDRMessage'):
+        message.autoComplete(self.ID,self.seq,self.clock)
+        if message.data["source"] == self.ID and message.data["seq"] == self.seq:
+            self.seq += 1
+
         destinations : 'set[str]' = self.__fulfillsPredicate(message.data["predicate"])
         if self.ID in destinations:
             destinations.remove(self.ID)
@@ -287,7 +291,7 @@ class DynamicRoutingNI:
                 return prev
         return None
 
-    def __fulfillsPredicate(self, predicate):
+    def fulfillsPredicate(self, predicate):
         fulfills = set([])
         for DroneID in self.infoTable:
             if self.__evaluatePredicate(predicate,DroneID):
