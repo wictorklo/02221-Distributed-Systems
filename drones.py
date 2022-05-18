@@ -27,6 +27,7 @@ class Drone:
     #this can update action returned by getAction(), put and get messages in and from the network interface 
     def think(self):
         self.networkInterface.tick()
+        self.networkInterface.dynamicRoutingNI.newPosition(self.xpos,self.ypos)
         while True:
             payload = self.networkInterface.getIncoming()
             if not payload:
@@ -90,3 +91,7 @@ class BDrone(Drone):
             return Action(speed = 1, direction = rnd.random() * 2 * math.pi)
         else:
             return Action()
+
+    def giveSensorData(self, observation):
+        super().giveSensorData(observation)
+        #send info about fire to close type A drones

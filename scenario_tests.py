@@ -161,3 +161,13 @@ class TestRouting(ut.TestCase):
         sim.performTurn()
         assert(len(adrones[0].networkInterface.singleStepNI.neighbours) == 2)
 
+    def test_stabilize_routing_joint_network(self):
+        #We want to test that if drones have conflicting routing tables
+        #but are not in a disjoint network, then after enough
+        #ordinary communication the routing tables will be correct
+        pass
+
+    def test_stabilize_routing_disjoint_network(self):
+        #we want to test that if two networks are joined, then they stabilize
+        #after enough ordinary communication
+        pass
