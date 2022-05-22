@@ -35,6 +35,8 @@ class Drone:
             
             data = json.loads(payload)
             if data["type"] == "observation":
+                print("")
+                print("got got")
                 observation = Observation(payload) 
                 self.__updateStateObservation(observation)
 
@@ -94,4 +96,4 @@ class BDrone(Drone):
 
     def giveSensorData(self, observation):
         super().giveSensorData(observation)
-        #send info about fire to close type A drones
+        #TODO send info about fire to close type A drones

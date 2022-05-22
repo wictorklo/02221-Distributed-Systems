@@ -152,12 +152,8 @@ class TestSimulator(ut.TestCase):
         sim = Simulator(tmap,script,[drone2,drone1],[], transmissionsPerTurn=1)
 
         message = PayloadSSMessage()
-        message.data = {
-            "destination" : "2",
-            "payload" : "hello",
-            "type":"payload",
-            "protocol":"SingleStep"
-            }
+        message.data["destination"] = "2"
+        message.data["payload"] = "hello"
         drone1.networkInterface.sendMessage(message)
 
         sim.performTurn()
@@ -249,21 +245,6 @@ class TestNetworkInterface(ut.TestCase):
             }))
         self.assertEqual(ni1.getIncoming(),"hello")
 
-    @ut.skip("Not relevant for new interfaces")
-    def test_bounce_message(self):
-        ni1 = NetworkInterface("1")
-        message = PayloadFloodMessage()
-        message.data = {
-            "source" : 0,
-            "destination" : 2,
-            "ttl" : 2,
-            "type" : "payload",
-            "seq" : 1,
-            "payload" : "hello"}
-        ni1.receiveMessage(message.getTransmit())
-        message.data["ttl"] -= 1
-        self.assertEqual(PayloadFloodMessage(ni1.getOutgoing()).data,message.data)
-
 class TestDynamicRouting(ut.TestCase):
     def test_recieves_and_acks_payload_message(self):
         routingTable = {"1" : set(["2"]), "2" : set(["1"])}
@@ -277,7 +258,6 @@ class TestDynamicRouting(ut.TestCase):
         payloadMessage.data["source"] = "2"
         payloadMessage.data["destination"] = "1"
         payloadMessage.data["payload"] = "payload1"
-        payloadMessage.data["type"] = "payload"
         payloadMessage.data["seq"] = 1
         payloadMessage.data["timestamp"] = 0
         payloadMessage.data["route"] = {"2" : "1"}
@@ -427,3 +407,40 @@ class TestDynamicRouting(ut.TestCase):
         drones = networkInterface1.dynamicRoutingNI.fulfillsPredicate(["less",["dist",["xpos",["varDrone"]],["ypos",["varDrone"]],["num",1],["num",0]],["num",1.3]])
         self.assertEqual(set(["1","2"]),drones)
         
+    def test_predicast_reaches_destination(self):
+        script = EmptyScript()
+        tmap = emptyMap(50,50,flammable=True)
+        routingTable = {"1" : set(["2"]), "2" : set(["1","3"]), "3" : set(["2","4"]), "4" : set(["3"])}
+        infoTable = {
+            "1" : {"type" : "B", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "B", "xpos" : 5, "ypos" : 5, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 10, "ypos" : 10, "timestamp" : 0},
+            "4" : {"type" : "A", "xpos" : 15, "ypos" : 15, "timestamp" : 0}}
+        ni1 = NetworkInterface("1",routingTable, infoTable)
+        ni2 = NetworkInterface("2",routingTable, infoTable)
+        ni3 = NetworkInterface("3",routingTable, infoTable)
+        ni4 = NetworkInterface("4",routingTable, infoTable)
+        drone1 = BDrone(ni1,tmap,xpos = 0,ypos = 0)
+        drone2 = BDrone(ni2,tmap,xpos = 5,ypos = 5)
+        drone3 = BDrone(ni3,tmap,xpos = 10,ypos = 10)
+        drone4 = ADrone(ni4,tmap,xpos = 15,ypos = 15)
+        sim = Simulator(tmap,script,[drone4],[drone1,drone2,drone3],transmissionDistance=10,lineOfSight=2)
+        predicate = [
+            "and",
+                ["typeA",["varDrone"]],
+                ["less",
+                    ["dist",["xpos",["varDrone"]],["ypos",["varDrone"]],["num",0],["num",15]],
+                    ["num",20]]
+        ]
+        observation = Observation()
+        observation.tiles.append((3,0,15))
+        message = PredicastDRMessage()
+        message.data["predicate"] = predicate
+        message.data["payload"] = observation.getObservationPayload()
+        drone1.networkInterface.sendMessage(message)
+
+        sim.performTurn()
+        sim.performTurn()
+        sim.performTurn()
+
+        self.assertLess(drone4.xpos,15)

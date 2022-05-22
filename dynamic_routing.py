@@ -111,6 +111,9 @@ class DynamicRoutingNI:
         self.singleStepNI.sendPayloadMessage(ssMessage)
     
     def predicast(self,message : 'PredicastDRMessage'):
+        message.autoComplete(self.ID,self.seq,self.clock)
+        if message.data["source"] == self.ID and message.data["seq"] == self.seq:
+            self.seq += 1
         self.predicastLog.add((message.data["source"],message.data["seq"]))
         self.__sendPredicast(message)
 
@@ -133,6 +136,7 @@ class DynamicRoutingNI:
         self.__multicast(message,destinations)
 
     def __receivePredicast(self, message : 'PredicastDRMessage'):
+        print(message.data)
         if (message.data["source"],message.data["seq"]) in self.predicastLog:
             return #already handled
         self.predicastLog.add((message.data["source"],message.data["seq"]))

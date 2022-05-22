@@ -1,11 +1,12 @@
 import json
 
 class Message:
-    def __init__(self,transmit = None):
+    def __init__(self,transmit = None,protocol = None,type = None):
+        self.data = {}
+        self.data["protocol"] = protocol
+        self.data["type"] = type
         if transmit:
             self.loadTransmit(transmit)
-        else:
-            self.data = {}
 
     def loadTransmit(self,transmit):
         self.data = json.loads(transmit)
@@ -15,77 +16,68 @@ class Message:
 
 
 class SSMessage(Message):
+    def __init__(self, transmit = None, type = None):
+        super().__init__(transmit,"SingleStep", type)
+
     def autoComplete(self,DroneID,seq):
         if not 'source' in self.data:
             self.data['source'] = DroneID
         if not 'seq' in self.data:
             self.data['seq'] = seq
-        if not 'protocol' in self.data:
-            self.data['protocol'] = 'SingleStep'
+            
 
 class PingSSMessage(SSMessage):
-    def autoComplete(self,DroneID,seq):
-        super().autoComplete(DroneID, seq)
-        self.data['type'] = 'ping'
+    def __init__(self, transmit=None):
+        super().__init__(transmit,"ping")
 
 class PongSSMessage(SSMessage):
-    def autoComplete(self,DroneID,seq):
-        super().autoComplete(DroneID, seq)
-        self.data['type'] = 'pong'
+    def __init__(self, transmit=None):
+        super().__init__(transmit,"pong")
 
 class PayloadSSMessage(SSMessage):
-    def autoComplete(self,DroneID,seq):
-        super().autoComplete(DroneID, seq)
-        self.data['type'] = 'payload'
+    def __init__(self, transmit=None):
+        super().__init__(transmit,"payload")
 
 class BroadcastMessage(SSMessage):
-    def autoComplete(self,DroneID,seq):
-        super().autoComplete(DroneID, seq)
-        if not 'type' in self.data:
-            self.data['type'] = 'broadcast'
+    def __init__(self, transmit=None):
+        super().__init__(transmit,"broadcast")
 
 class DRMessage(Message):
+    def __init__(self, transmit = None, type = None):
+        super().__init__( transmit,"DynamicRouting",type)
+
     def autoComplete(self,DroneID,seq,clock):
         if not 'source' in self.data:
             self.data['source'] = DroneID
         if not 'seq' in self.data:
             self.data['seq'] = seq
-        if not 'protocol' in self.data:
-            self.data['protocol'] = 'DynamicRouting'
         if not 'timestamp' in self.data:
             self.data['timestamp'] = clock
 
 class PayloadDRMessage(DRMessage):
-    def autoComplete(self,DroneID,seq,clock):
-        super().autoComplete(DroneID,seq,clock)
-        self.data['type'] = 'payload'
+    def __init__(self, transmit=None):
+        super().__init__(transmit,"payload")
 
 class PredicastDRMessage(DRMessage):
-    def autoComplete(self,DroneID,seq,clock):
-        super().autoComplete(DroneID,seq,clock)
-        self.data['type'] = 'predicast'
+    def __init__(self, transmit=None):
+        super().__init__(transmit,"predicast")
 
 class PayloadAckDRMessage(DRMessage):
-    def autoComplete(self,DroneID,seq,clock):
-        super().autoComplete(DroneID,seq,clock)
-        self.data['type'] = 'payloadAck'
+    def __init__(self, transmit=None):
+        super().__init__(transmit,"payloadAck")
 
 class AckDRMessage(DRMessage):
-    def autoComplete(self,DroneID,_,clock):
-        super().autoComplete(DroneID,None,clock)
-        self.data['type'] = 'ack'
+    def __init__(self, transmit=None):
+        super().__init__(transmit,"ack")
 
 class CorrectionDRMessage(DRMessage):
-    def autoComplete(self, DroneID, seq, clock):
-        super().autoComplete(DroneID, seq, clock)
-        self.data['type'] = 'correction'
+    def __init__(self, transmit=None):
+        super().__init__(transmit,"correction")
 
 class InfoDRMessage(DRMessage):
-    def autoComplete(self, DroneID, seq, clock):
-        super().autoComplete(DroneID, seq, clock)
-        self.data['type'] = 'info'
+    def __init__(self, transmit=None):
+        super().__init__(transmit,"info")
 
 class PerformCorrectionDRMessage(DRMessage):
-    def autoComplete(self, DroneID, seq, clock):
-        super().autoComplete(DroneID, seq, clock)
-        self.data['type'] = 'performCorrection'
+    def __init__(self, transmit=None):
+        super().__init__(transmit,"performCorrection")
