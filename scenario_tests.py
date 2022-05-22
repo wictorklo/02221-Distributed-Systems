@@ -249,4 +249,5 @@ class TestRouting(ut.TestCase):
     def test_stabilize_routing_disjoint_network(self):
         #we want to test that if two networks are joined, then they stabilize
         #after enough ordinary communication
+        #TODO
         pass

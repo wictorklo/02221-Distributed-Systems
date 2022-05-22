@@ -2,6 +2,8 @@
 import json
 from typing import Set
 import unittest as ut
+
+from numpy import broadcast
 from simulator import *
 from script import EmptyScript
 from network_interfaces import *
@@ -261,9 +263,10 @@ class TestDynamicRouting(ut.TestCase):
         payloadMessage.data["timestamp"] = 0
         payloadMessage.data["route"] = {"2" : "1"}
         dynamicRoutingNI.receiveMessage(payloadMessage)
-        self.assertIn("payload1",dynamicRoutingNI.incoming)
 
+        self.assertIn("payload1",dynamicRoutingNI.incoming)
         self.assertEqual(2,len(singleStepNI.sendPayloads))
+
         m1 = singleStepNI.sendPayloads[0]
         m2 = singleStepNI.sendPayloads[1]
         p1 = Message(m1.data["payload"])
@@ -274,6 +277,7 @@ class TestDynamicRouting(ut.TestCase):
         else:
             ackPay = p2
             ack = p1
+
         self.assertEqual("payloadAck",ackPay.data["type"])
         self.assertEqual("ack",ack.data["type"])
         
@@ -307,8 +311,6 @@ class TestDynamicRouting(ut.TestCase):
         else:
             pay = p2
             ack = p1
-        print(p1.data)
-        print(p2.data)
         self.assertEqual("payload",pay.data["type"])
         self.assertEqual("ack",ack.data["type"])
 
@@ -351,7 +353,6 @@ class TestDynamicRouting(ut.TestCase):
             "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
             "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
         networkInterface1 = NetworkInterface("1",routingTable,infoTable)
-        networkInterface2 = NetworkInterface("2",routingTable,infoTable)
         networkInterface3 = NetworkInterface("3",routingTable,infoTable)
         payloadMessage = PayloadDRMessage()
         payloadMessage.data["source"] = "1"
@@ -385,9 +386,20 @@ class TestDynamicRouting(ut.TestCase):
             networkInterface1.tick()
             m = networkInterface1.getOutgoing()
             if m:
+                if count == 0:
+                    broadcast = BroadcastMessage(m)
+                    correction = CorrectionDRMessage(broadcast.data["payload"])
+                    self.assertEqual("correction",correction.data["type"])
+                if count == 1:
+                    ss = PayloadSSMessage(m)
+                    perform = PerformCorrectionDRMessage(ss.data["payload"])
+                    self.assertEqual("performCorrection",perform.data["type"])
+                if count == 2:
+                    ss = PayloadSSMessage(m)
+                    pl = PayloadDRMessage(ss.data["payload"])
+                    self.assertEqual("payload",pl.data["type"])
                 networkInterface3.receiveMessage(m)
                 count += 1
-                print(m)
         self.assertEqual(set(["3"]),networkInterface1.dynamicRoutingNI.routingTable["1"])
         self.assertEqual(set(["3"]),networkInterface3.dynamicRoutingNI.routingTable["1"])
         p = networkInterface3.getIncoming()
@@ -427,7 +439,7 @@ class TestDynamicRouting(ut.TestCase):
         drone2 = BDrone(ni2,tmap,xpos = 5,ypos = 5)
         drone3 = BDrone(ni3,tmap,xpos = 10,ypos = 10)
         drone4 = ADrone(ni4,tmap,xpos = 15,ypos = 15)
-        drone5 = ADrone(ni5,tmap,xpos = 15,ypos = 10)
+        drone5 = BDrone(ni5,tmap,xpos = 15,ypos = 10)
         drone6 = ADrone(ni6,tmap,xpos = 15,ypos = 5)
         sim = Simulator(tmap,script,[drone4,drone6],[drone1,drone2,drone3,drone5],transmissionDistance=9,lineOfSight=2)
         predicate = [
