@@ -10,9 +10,13 @@ class TestMessageDropped(ut.TestCase):
         #D1 sends message to D2 which is dropped during transmission
         script = Script(dropped1)
         rt = {"1" : set(["2"]), "2" : set(["1"])}
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
         map = emptyMap(10,10)
-        ADrones = [ADrone(NetworkInterface("1", rt, None),map, 0, 0)]
-        BDrones = [BDrone(NetworkInterface("2", rt, None),map, 2, 2)]
+        ADrones = [ADrone(NetworkInterface("1", rt, infoTable),map, 0, 0)]
+        BDrones = [BDrone(NetworkInterface("2", rt, infoTable),map, 2, 2)]
         sim = Simulator(map,script,ADrones,BDrones, transmissionsPerTurn=3)
         sim.performTurn()
         self.assertTrue(len(sim.BDrones[0].networkInterface.dynamicRoutingNI.payloadLog) == 0)
@@ -21,9 +25,13 @@ class TestMessageDropped(ut.TestCase):
         #D1 sends message to D2 which is dropped during transmission. Succeeds on retry.
         script = Script(dropped1)
         rt = {"1" : set(["2"]), "2" : set(["1"])}
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
         map = emptyMap(10,10)
-        ADrones = [ADrone(NetworkInterface("1", rt, None),map, 0, 0)]
-        BDrones = [BDrone(NetworkInterface("2", rt, None),map, 2, 2)]
+        ADrones = [ADrone(NetworkInterface("1", rt, infoTable),map, 0, 0)]
+        BDrones = [BDrone(NetworkInterface("2", rt, infoTable),map, 2, 2)]
         sim = Simulator(map,script,ADrones,BDrones)
         sim.performTurn()
         self.assertTrue(len(sim.BDrones[0].networkInterface.dynamicRoutingNI.payloadLog) == 1)
@@ -32,6 +40,10 @@ class TestMessageDelivered(ut.TestCase):
     def test_deliver_message(self):
         # D1 sends message to D2
         rt = {"1" : set(["2"]), "2" : set(["1"])}
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
         script = EmptyScript()
         message = PayloadDRMessage()
         message.data = {
@@ -45,8 +57,8 @@ class TestMessageDelivered(ut.TestCase):
             "timestamp" : 0
         }
         map = emptyMap(100,100)
-        ADrones = [ADrone(NetworkInterface("1", rt, None),map, 0, 0)]
-        BDrones = [BDrone(NetworkInterface("2", rt, None),map, 2, 2)]
+        ADrones = [ADrone(NetworkInterface("1", rt, infoTable),map, 0, 0)]
+        BDrones = [BDrone(NetworkInterface("2", rt, infoTable),map, 2, 2)]
         sim = Simulator(map,script,ADrones,BDrones)
         ADrones[0].networkInterface.sendMessage(message)
         sim.performTurn()
@@ -56,6 +68,10 @@ class TestMessageDelivered(ut.TestCase):
         # D1 sends a message to D2 by propagating it through D3
         script = EmptyScript()
         message = PayloadDRMessage()
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
         message.data = {
             "source" : "1",
             "destination" : "2",
@@ -68,8 +84,8 @@ class TestMessageDelivered(ut.TestCase):
         }
         map = emptyMap(10,10)
         rt = {"1" : set(["3"]), "2" : set(["3"]), "3" : set(["1", "2"])}
-        ADrones = [ADrone(NetworkInterface("1", rt, None),map, 0, 0)]
-        BDrones = [BDrone(NetworkInterface("2", rt, None),map, 6, 6), BDrone(NetworkInterface("3", rt, None),map, 3, 3)]
+        ADrones = [ADrone(NetworkInterface("1", rt, infoTable),map, 0, 0)]
+        BDrones = [BDrone(NetworkInterface("2", rt, infoTable),map, 6, 6), BDrone(NetworkInterface("3", rt, infoTable),map, 3, 3)]
         sim = Simulator(map,script,ADrones,BDrones)
         ADrones[0].networkInterface.sendMessage(message)
         sim.performTurn()
@@ -80,6 +96,10 @@ class TestMessageDelivered(ut.TestCase):
     def test_deliver_ack_message(self):
         # D1 sends message to D2. D2 sends ack to D1
         rt = {"1" : set(["2"]), "2" : set(["1"])}
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
         script = EmptyScript()
         message = PayloadDRMessage()
         message.data = {
@@ -93,8 +113,8 @@ class TestMessageDelivered(ut.TestCase):
             "timestamp" : 0
         }
         map = emptyMap(100,100)
-        ADrones = [ADrone(NetworkInterface("1", rt, None),map, 0, 0)]
-        BDrones = [BDrone(NetworkInterface("2", rt, None),map, 2, 2)]
+        ADrones = [ADrone(NetworkInterface("1", rt, infoTable),map, 0, 0)]
+        BDrones = [BDrone(NetworkInterface("2", rt, infoTable),map, 2, 2)]
         sim = Simulator(map,script,ADrones,BDrones, transmissionsPerTurn=1)
         BDrones[0].networkInterface.sendMessage(message)
         sim.performTurn()
@@ -115,12 +135,17 @@ class TestChallenges(ut.TestCase):
             "3" : set(["1", "2", "4"]),
             "4" : set(["2", "3"])
         }
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0},
+            "4" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
         map = emptyMap(10, 10)
         adrones = [
-            ADrone(NetworkInterface("1", routingTable, None),map, 0, 0),
-            ADrone(NetworkInterface("2", routingTable, None),map, 0, 3),
-            ADrone(NetworkInterface("3", routingTable, None),map, 0, 3.5),
-            ADrone(NetworkInterface("4", routingTable, None),map, 0, 6)
+            ADrone(NetworkInterface("1", routingTable, infoTable),map, 0, 0),
+            ADrone(NetworkInterface("2", routingTable, infoTable),map, 0, 3),
+            ADrone(NetworkInterface("3", routingTable, infoTable),map, 0, 3.5),
+            ADrone(NetworkInterface("4", routingTable, infoTable),map, 0, 6)
         ]
         sim = Simulator(map, script, adrones, [], transmissionsPerTurn=10,transmissionDistance=4)
 
@@ -148,12 +173,17 @@ class TestRouting(ut.TestCase):
             "3" : set(["1", "2", "4"]),
             "4" : set(["2", "3"])
         }
+        infoTable = {
+            "1" : {"type" : "A", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
+            "2" : {"type" : "A", "xpos" : 1, "ypos" : 1, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0},
+            "4" : {"type" : "B", "xpos" : 4, "ypos" : 5, "timestamp" : 0}}
         map = emptyMap(10, 10)
         adrones = [
-            ADrone(NetworkInterface("1", routingTable, None),map, 0, 0),
-            ADrone(NetworkInterface("2", routingTable, None),map, 0, 3),
-            ADrone(NetworkInterface("3", routingTable, None),map, 0, 3.5),
-            ADrone(NetworkInterface("4", routingTable, None),map, 0, 6)
+            ADrone(NetworkInterface("1", routingTable, infoTable),map, 0, 0),
+            ADrone(NetworkInterface("2", routingTable, infoTable),map, 0, 3),
+            ADrone(NetworkInterface("3", routingTable, infoTable),map, 0, 3.5),
+            ADrone(NetworkInterface("4", routingTable, infoTable),map, 0, 6)
         ]
         sim = Simulator(map, script, adrones, [], transmissionsPerTurn=10, transmissionDistance=5)
 
