@@ -181,7 +181,6 @@ class TestSimulator(ut.TestCase):
             isOnFire(drone1.map[1][1])
         )
     
-    #@ut.skip("not updated to new interfaces")
     def test_internal_state_change_message(self):
         script = EmptyScript()
         tmap = emptyMap(50,50,flammable=True)
@@ -194,7 +193,7 @@ class TestSimulator(ut.TestCase):
         ni2 = NetworkInterface("2",routingTable, infoTable)
         drone1 = BDrone(ni1,tmap,xpos = 49,ypos = 49)
         drone2 = BDrone(ni2,tmap,xpos = 46,ypos = 46)
-        sim = Simulator(tmap,script,[],[drone1,drone2])
+        sim = Simulator(tmap,script,[],[drone1,drone2],transmissionDistance=8)
 
         observation = Observation()
         observation.tiles.append((3,0,0))
@@ -410,27 +409,33 @@ class TestDynamicRouting(ut.TestCase):
     def test_predicast_reaches_destination(self):
         script = EmptyScript()
         tmap = emptyMap(50,50,flammable=True)
-        routingTable = {"1" : set(["2"]), "2" : set(["1","3"]), "3" : set(["2","4"]), "4" : set(["3"])}
+        routingTable = {"1" : set(["2"]), "2" : set(["1","3"]), "3" : set(["2","4","5"]), "4" : set(["3","5"]), "5" : set(["3","4","6"]), "6" : set("5")}
         infoTable = {
             "1" : {"type" : "B", "xpos" : 0, "ypos" : 0, "timestamp" : 0},
             "2" : {"type" : "B", "xpos" : 5, "ypos" : 5, "timestamp" : 0},
             "3" : {"type" : "B", "xpos" : 10, "ypos" : 10, "timestamp" : 0},
-            "4" : {"type" : "A", "xpos" : 15, "ypos" : 15, "timestamp" : 0}}
+            "4" : {"type" : "A", "xpos" : 15, "ypos" : 15, "timestamp" : 0},
+            "5" : {"type" : "B", "xpos" : 15, "ypos" : 10, "timestamp" : 0},
+            "6" : {"type" : "A", "xpos" : 15, "ypos" : 5, "timestamp" : 0}}
         ni1 = NetworkInterface("1",routingTable, infoTable)
         ni2 = NetworkInterface("2",routingTable, infoTable)
         ni3 = NetworkInterface("3",routingTable, infoTable)
         ni4 = NetworkInterface("4",routingTable, infoTable)
+        ni5 = NetworkInterface("5",routingTable, infoTable)
+        ni6 = NetworkInterface("6",routingTable, infoTable)
         drone1 = BDrone(ni1,tmap,xpos = 0,ypos = 0)
         drone2 = BDrone(ni2,tmap,xpos = 5,ypos = 5)
         drone3 = BDrone(ni3,tmap,xpos = 10,ypos = 10)
         drone4 = ADrone(ni4,tmap,xpos = 15,ypos = 15)
-        sim = Simulator(tmap,script,[drone4],[drone1,drone2,drone3],transmissionDistance=10,lineOfSight=2)
+        drone5 = ADrone(ni5,tmap,xpos = 15,ypos = 10)
+        drone6 = ADrone(ni6,tmap,xpos = 15,ypos = 5)
+        sim = Simulator(tmap,script,[drone4,drone6],[drone1,drone2,drone3,drone5],transmissionDistance=9,lineOfSight=2)
         predicate = [
             "and",
                 ["typeA",["varDrone"]],
                 ["less",
                     ["dist",["xpos",["varDrone"]],["ypos",["varDrone"]],["num",0],["num",15]],
-                    ["num",20]]
+                    ["num",16]]
         ]
         observation = Observation()
         observation.tiles.append((3,0,15))
@@ -442,5 +447,8 @@ class TestDynamicRouting(ut.TestCase):
         sim.performTurn()
         sim.performTurn()
         sim.performTurn()
+        sim.performTurn()
 
         self.assertLess(drone4.xpos,14)
+        self.assertAlmostEqual(drone6.xpos,15)
+        self.assertAlmostEqual(drone6.ypos,5)

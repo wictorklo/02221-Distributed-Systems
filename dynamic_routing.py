@@ -447,9 +447,7 @@ class DynamicRoutingNI:
             y1 = self.__evaluateExpression(expression[2],DroneID)
             x2 = self.__evaluateExpression(expression[3],DroneID)
             y2 = self.__evaluateExpression(expression[4],DroneID)
-            x = x2 - x1
-            y = y2 - y1
-            return math.sqrt(x * x + y * y)
+            return util.distance(x1,y1,x2,y2)
         
 
     def __evaluateDroneID(self, idExpression, DroneID):

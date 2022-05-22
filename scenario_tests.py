@@ -89,8 +89,8 @@ class TestMessageDelivered(ut.TestCase):
         sim = Simulator(map,script,ADrones,BDrones)
         ADrones[0].networkInterface.sendMessage(message)
         sim.performTurn()
-        self.assertTrue(len(sim.ADrones[0].networkInterface.dynamicRoutingNI.timeouts) == 1)
-        self.assertTrue("infocast" in sim.ADrones[0].networkInterface.dynamicRoutingNI.timeouts.keys())
+        self.assertEqual(len(sim.ADrones[0].networkInterface.dynamicRoutingNI.timeouts), 3)
+        self.assertIn("infocast", sim.ADrones[0].networkInterface.dynamicRoutingNI.timeouts.keys())
     
     #TODO: Test that ACK is received and stops resends
     def test_deliver_ack_message(self):
@@ -213,7 +213,7 @@ class TestRouting(ut.TestCase):
         drone2 = BDrone(ni2,tmap,xpos = 5,ypos = 5)
         drone3 = BDrone(ni3,tmap,xpos = 10,ypos = 10)
         drone4 = ADrone(ni4,tmap,xpos = 15,ypos = 15)
-        sim = Simulator(tmap,script,[drone4],[drone1,drone2,drone3],transmissionDistance=7,lineOfSight=2)
+        sim = Simulator(tmap,script,[drone4],[drone1,drone2,drone3],transmissionDistance=10,lineOfSight=2)
 
         for i in range(20):
             source = [drone1,drone2,drone3,drone4][i % 4]

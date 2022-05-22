@@ -108,8 +108,7 @@ class Simulator:
 
         for i in range(len(drones)):
             for j in range(i + 1,len(drones)):
-                if (abs(drones[i].xpos - drones[j].xpos) <= self.transmissionDistance and
-                        abs(drones[i].ypos - drones[j].ypos) <= self.transmissionDistance):
+                if (distance(drones[i].xpos,drones[i].ypos,drones[j].xpos,drones[j].ypos) <= self.transmissionDistance):
                     transmissionMap[drones[i].ID].add(drones[j].ID)
                     transmissionMap[drones[j].ID].add(drones[i].ID)
 
@@ -119,6 +118,5 @@ class Simulator:
                 transmit = drone.networkInterface.getOutgoing()
                 if transmit:
                     for ID in transmissionMap[drone.ID]:
-                        print(str(drone.ID) + " ---> " + str(ID))
                         self.droneMap[ID].networkInterface.receiveMessage(transmit)
         
