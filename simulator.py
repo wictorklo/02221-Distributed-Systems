@@ -119,5 +119,6 @@ class Simulator:
                 transmit = drone.networkInterface.getOutgoing()
                 if transmit:
                     for ID in transmissionMap[drone.ID]:
+                        print(str(drone.ID) + " ---> " + str(ID))
                         self.droneMap[ID].networkInterface.receiveMessage(transmit)
         

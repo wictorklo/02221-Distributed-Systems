@@ -53,7 +53,7 @@ class DynamicRoutingNI:
         if seq == self.seq:
             self.seq += 1
 
-        if not seq in self.timeouts:
+        if not seq in self.timeouts or self.timeouts[seq] <= 0:
             self.timeouts[seq] = self.defaultTimeoutOrigin
             self.timeoutHandlers[seq] = (lambda : self.sendPayloadMessage(message))
             self.timeoutStarts[seq] = self.clock
@@ -97,7 +97,7 @@ class DynamicRoutingNI:
         #this scheme could lead to problems if we are excpecting acks from multiple nodes for the same message
         destination = self.__prevStep(message)
         if not destination:
-            raise Exception("no previous node")
+            return #this could be if we just sent a message to ourself
         ack = AckDRMessage()
         ack.data["seq"] = message.data["seq"]
         ack.data["source"] = message.data["source"]
@@ -136,7 +136,6 @@ class DynamicRoutingNI:
         self.__multicast(message,destinations)
 
     def __receivePredicast(self, message : 'PredicastDRMessage'):
-        print(message.data)
         if (message.data["source"],message.data["seq"]) in self.predicastLog:
             return #already handled
         self.predicastLog.add((message.data["source"],message.data["seq"]))
@@ -209,7 +208,11 @@ class DynamicRoutingNI:
                 return "NoRoute"
 
         #send through SS layer
-        nextStepID = message.data["route"][self.ID]
+        if  self.ID in message.data["route"]:
+            nextStepID = message.data["route"][self.ID]
+        elif message.data["destination"] == self.ID:
+            self.receiveMessage(message)
+            return
         ssMessage = PayloadSSMessage()
         ssMessage.data["payload"] = message.getTransmit()
         ssMessage.data["destination"] = nextStepID
@@ -310,6 +313,8 @@ class DynamicRoutingNI:
 
     def __findRoute(self, message : 'DRMessage'):
         route = util.route(self.ID, message.data["destination"], self.routingTable)
+        if route == None:
+            return None
         routeMap = {}
         for i in range(1,len(route)):
             routeMap[route[i-1]] = route[i]

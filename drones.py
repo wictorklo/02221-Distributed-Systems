@@ -35,8 +35,6 @@ class Drone:
             
             data = json.loads(payload)
             if data["type"] == "observation":
-                print("")
-                print("got got")
                 observation = Observation(payload) 
                 self.__updateStateObservation(observation)
 

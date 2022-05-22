@@ -28,7 +28,7 @@ class SingleStepNI:
         self.__sendMessage(message)
 
     def receiveMessage(self, message : 'SSMessage'):
-        if not message.data["source"] in self.neighbours:
+        if not message.data["source"] in self.neighbours and message.data["type"] != "broadcast":
             self.neighbours.add(message.data["source"])
         if message.data["type"] == "ping":
             message = PongSSMessage()

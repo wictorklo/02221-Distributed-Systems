@@ -195,8 +195,57 @@ class TestRouting(ut.TestCase):
         #We want to test that if drones have conflicting routing tables
         #but are not in a disjoint network, then after enough
         #ordinary communication the routing tables will be correct
-        pass
+        script = EmptyScript()
+        tmap = emptyMap(50,50,flammable=True)
+        #nonsensical routing info
+        routingTable = {"1" : set(["4"]), "2" : set(["1"]), "3" : set(["1","4"]), "4" : set([])}
+        #nonsensical info table
+        infoTable = {
+            "1" : {"type" : "B", "xpos" : 100, "ypos" : 3, "timestamp" : 0},
+            "2" : {"type" : "B", "xpos" : 64, "ypos" : 51, "timestamp" : 0},
+            "3" : {"type" : "B", "xpos" : 14, "ypos" : 20, "timestamp" : 0},
+            "4" : {"type" : "A", "xpos" : 92, "ypos" : 43, "timestamp" : 0}}
+        ni1 = NetworkInterface("1",routingTable, infoTable)
+        ni2 = NetworkInterface("2",routingTable, infoTable)
+        ni3 = NetworkInterface("3",routingTable, infoTable)
+        ni4 = NetworkInterface("4",routingTable, infoTable)
+        drone1 = BDrone(ni1,tmap,xpos = 0,ypos = 0)
+        drone2 = BDrone(ni2,tmap,xpos = 5,ypos = 5)
+        drone3 = BDrone(ni3,tmap,xpos = 10,ypos = 10)
+        drone4 = ADrone(ni4,tmap,xpos = 15,ypos = 15)
+        sim = Simulator(tmap,script,[drone4],[drone1,drone2,drone3],transmissionDistance=7,lineOfSight=2)
 
+        for i in range(20):
+            source = [drone1,drone2,drone3,drone4][i % 4]
+            destination = ["1","2","3","4"][(i + (1 + i // 4)) % 4]
+            message = PayloadDRMessage()
+            message.data["payload"] = Observation().getObservationPayload()
+            message.data["destination"] = destination
+            source.networkInterface.sendMessage(message)
+
+            sim.performTurn()
+
+        sim.performTurn()
+        sim.performTurn()
+        self.assertEqual(
+            drone1.networkInterface.dynamicRoutingNI.routingTable["1"],
+            set(["2"]))
+        self.assertEqual(
+            drone3.networkInterface.dynamicRoutingNI.routingTable["1"],
+            set(["2"]))
+        self.assertEqual(
+            drone4.networkInterface.dynamicRoutingNI.routingTable["2"],
+            set(["1","3"]))
+        self.assertEqual(
+            drone1.networkInterface.dynamicRoutingNI.infoTable["1"]["xpos"],
+            0)
+        self.assertEqual(
+            drone3.networkInterface.dynamicRoutingNI.infoTable["1"]["ypos"],
+            0)
+        self.assertEqual(
+            drone4.networkInterface.dynamicRoutingNI.infoTable["2"]["xpos"],
+            5)
+            
     def test_stabilize_routing_disjoint_network(self):
         #we want to test that if two networks are joined, then they stabilize
         #after enough ordinary communication

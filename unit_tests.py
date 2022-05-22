@@ -443,4 +443,4 @@ class TestDynamicRouting(ut.TestCase):
         sim.performTurn()
         sim.performTurn()
 
-        self.assertLess(drone4.xpos,15)
+        self.assertLess(drone4.xpos,14)
